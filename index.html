@@ -1,0 +1,146 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>Farz by rabbanyk</title>
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/github-dark.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+    <script src="javascripts/main.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+
+  </head>
+  <body>
+
+      <header>
+        <h1>Farz</h1>
+        <p>Benchmark Generator for Community Detection Validation</p>
+      </header>
+
+      <div id="banner">
+        <span id="logo"></span>
+
+        <a href="https://github.com/rabbanyk/FARZ" class="button fork"><strong>View On GitHub</strong></a>
+        <div class="downloads">
+          <span>Downloads:</span>
+          <ul>
+            <li><a href="https://github.com/rabbanyk/FARZ/zipball/master" class="button">ZIP</a></li>
+            <li><a href="https://github.com/rabbanyk/FARZ/tarball/master" class="button">TAR</a></li>
+          </ul>
+        </div>
+      </div><!-- end banner -->
+
+    <div class="wrapper">
+      <nav>
+        <ul></ul>
+      </nav>
+      <section>
+        <h3>
+<a id="welcome-to-the-farz-webpage" class="anchor" href="#welcome-to-the-farz-webpage" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Welcome to the FARZ webpage.</h3>
+
+<p>FARZ is generator/simulator for networks with built-in community structure. 
+It creates graphs/networks with community labels, which can be used for evaluating community detection algorithms.</p>
+
+<h3>
+<a id="generator-parameters" class="anchor" href="#generator-parameters" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Generator Parameters</h3>
+
+<ul>
+<li>main parameter
+
+<ul>
+<li>
+<code>n</code>: number of nodes</li>
+<li>
+<code>k</code>: number of communities</li>
+<li>
+<code>m</code>: half the average degree of nodes</li>
+</ul>
+</li>
+<li>control parameters
+
+<ul>
+<li>
+<code>beta</code>: the strength of community structure, i.e. the probability of edges to be formed within communities, default (0.8)</li>
+<li>
+<code>alpha</code>: the strength of common neighbor's effect on edge formation edges, default (0.5)</li>
+<li>
+<code>gamma</code>: the strength of degree similarity effect on edge formation, default (0.5), can be negative for networks with negative degree correlation</li>
+</ul>
+</li>
+<li>config parameters
+
+<ul>
+<li>
+<code>phi</code>: the constant added to all community sizes, higher number makes the communities more balanced in size, default (1) which results in power law distribution for community sizes</li>
+<li>
+<code>o</code>: the number of communities each node can belong to, default (1) </li>
+<li>
+<code>epsilon</code>: the probability of noisy/random edges, default (0.0000001)</li>
+<li>
+<code>b</code>: the probability of also connecting to the neighbors of a node each nodes connects to. The default value is (0), but could be increase to a small number to achieve higher clustering coefficient. </li>
+</ul>
+</li>
+</ul>
+
+<h3>
+<a id="how-to-run" class="anchor" href="#how-to-run" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>How to run</h3>
+
+<p>The source code is in Pyhton 2.7. 
+You can generate FARZ benchmarks from FARZ.py. See below for examples.</p>
+
+<h3>
+<a id="examples" class="anchor" href="#examples" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Examples</h3>
+
+<p><code>params = {"n":1000, "k":4, "m":4, "alpha":0.5, "beta":0.8, "gamma":0.5}</code></p>
+
+<ul>
+<li>Use FARZ directly
+
+<ul>
+<li><code>FARZ.realize(**params)</code></li>
+</ul>
+</li>
+<li>
+<p>Use batch generator</p>
+
+<ul>
+<li>Generate a dataset of networks with <code>beta</code> varying from 0.5 to 1 with 0.05 steps, for each beta generate 10 networks, and write the networks in gml format.</li>
+</ul>
+
+<p><code>generate('beta', arange=(0.5,1,0.05), repeat =10, path='./vbeta', format = 'gml', params=params)</code></p>
+</li>
+</ul>
+
+<h3>
+<a id="reference" class="anchor" href="#reference" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Reference</h3>
+
+<p><a href="">Paper on Arxiv</a></p>
+
+<h3>
+<a id="support-or-contact" class="anchor" href="#support-or-contact" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Support or Contact</h3>
+
+<p>Reihaneh Rabbany (<a href="https://github.com/rabbanyk" class="user-mention">@rabbanyk</a>), <a href="mailto:rabbanyk@ualberta.ca">rabbanyk@ualberta.ca</a></p>
+      </section>
+      <footer>
+        <p>Project maintained by <a href="https://github.com/rabbanyk">rabbanyk</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://twitter.com/michigangraham">mattgraham</a></small></p>
+      </footer>
+    </div>
+    <!--[if !IE]><script>fixScale(document);</script><![endif]-->
+              <script type="text/javascript">
+            var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+            document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+          </script>
+          <script type="text/javascript">
+            try {
+              var pageTracker = _gat._getTracker("UA-31924586-1");
+            pageTracker._trackPageview();
+            } catch(err) {}
+          </script>
+
+  </body>
+</html>
