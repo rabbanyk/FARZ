@@ -34,8 +34,5 @@ You can generate FARZ benchmarks from FARZ.py. See below for examples.
     `generate('beta', arange=(0.5,1,0.05), repeat =10, path='./vbeta', format = 'gml', params=params)`
 
 
-### Reference 
-[Paper on Arxiv]()
-
 ### Support or Contact
-Reihaneh Rabbany (@rabbanyk), rabbanyk@ualberta.ca
+Reihaneh Rabbany, rabbanyk@ualberta.ca
