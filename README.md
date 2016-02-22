@@ -5,7 +5,7 @@ FARZ is generator/simulator for networks with built-in community structure.
 It creates graphs/networks with community labels, which can be used for evaluating community detection algorithms.
 
 ### Generator Parameters
-* main parameter
+* main parameters
    + `n`: number of nodes
    + `m`: half the average degree of nodes
    + `k`: number of communities
