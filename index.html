@@ -1,38 +1,49 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-
   <head>
-    <meta charset='utf-8'>
+    <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="chrome=1">
-    <meta name="description" content="FARZ : Benchmark Generator for Community Detection Validation">
+    <title>FARZ by rabbanyk</title>
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/github-dark.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+    <script src="javascripts/main.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
-    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
-
-    <title>FARZ</title>
   </head>
-
   <body>
 
-    <!-- HEADER -->
-    <div id="header_wrap" class="outer">
-        <header class="inner">
-          <a id="forkme_banner" href="https://github.com/rabbanyk/FARZ">View on GitHub</a>
+      <header>
+        <h1>FARZ</h1>
+        <p>Benchmark Generator for Community Detection Validation</p>
+      </header>
 
-          <h1 id="project_title">FARZ</h1>
-          <h2 id="project_tagline">Benchmark Generator for Community Detection Validation</h2>
+      <div id="banner">
+        <span id="logo"></span>
 
-            <section id="downloads">
-              <a class="zip_download_link" href="https://github.com/rabbanyk/FARZ/zipball/master">Download this project as a .zip file</a>
-              <a class="tar_download_link" href="https://github.com/rabbanyk/FARZ/tarball/master">Download this project as a tar.gz file</a>
-            </section>
-        </header>
-    </div>
+        <a href="https://github.com/rabbanyk/FARZ" class="button fork"><strong>View On GitHub</strong></a>
+        <div class="downloads">
+          <span>Downloads:</span>
+          <ul>
+            <li><a href="https://github.com/rabbanyk/FARZ/zipball/master" class="button">ZIP</a></li>
+            <li><a href="https://github.com/rabbanyk/FARZ/tarball/master" class="button">TAR</a></li>
+          </ul>
+        </div>
+      </div><!-- end banner -->
 
-    <!-- MAIN CONTENT -->
-    <div id="main_content_wrap" class="outer">
-      <section id="main_content" class="inner">
-        <h3>
-<a id="welcome-to-the-farz-webpage" class="anchor" href="#welcome-to-the-farz-webpage" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Welcome to the FARZ webpage.</h3>
+    <div class="wrapper">
+      <nav>
+        <ul></ul>
+      </nav>
+      <section>
+        <h1>
+<a id="farz" class="anchor" href="#farz" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>FARZ</h1>
+
+<h2>
+<a id="benchmarks-for-community-detection-algorithms" class="anchor" href="#benchmarks-for-community-detection-algorithms" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Benchmarks for Community Detection Algorithms</h2>
 
 <p>FARZ is generator/simulator for networks with built-in community structure. 
 It creates graphs/networks with community labels, which can be used for evaluating community detection algorithms.</p>
@@ -41,15 +52,15 @@ It creates graphs/networks with community labels, which can be used for evaluati
 <a id="generator-parameters" class="anchor" href="#generator-parameters" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Generator Parameters</h3>
 
 <ul>
-<li>main parameter
+<li>main parameters
 
 <ul>
 <li>
 <code>n</code>: number of nodes</li>
 <li>
-<code>k</code>: number of communities</li>
-<li>
 <code>m</code>: half the average degree of nodes</li>
+<li>
+<code>k</code>: number of communities</li>
 </ul>
 </li>
 <li>control parameters
@@ -63,17 +74,24 @@ It creates graphs/networks with community labels, which can be used for evaluati
 <code>gamma</code>: the strength of degree similarity effect on edge formation, default (0.5), can be negative for networks with negative degree correlation</li>
 </ul>
 </li>
+<li>overlap parameters
+
+<ul>
+<li>
+<code>r</code>: the number of communities each node can belong to, default (1)</li>
+<li>
+<code>q</code>: the probability of a node belonging to the multiple communities, default (0.5)</li>
+</ul>
+</li>
 <li>config parameters
 
 <ul>
 <li>
 <code>phi</code>: the constant added to all community sizes, higher number makes the communities more balanced in size, default (1) which results in power law distribution for community sizes</li>
 <li>
-<code>o</code>: the number of communities each node can belong to, default (1) </li>
-<li>
 <code>epsilon</code>: the probability of noisy/random edges, default (0.0000001)</li>
 <li>
-<code>b</code>: the probability of also connecting to the neighbors of a node each nodes connects to. The default value is (0), but could be increase to a small number to achieve higher clustering coefficient. </li>
+<code>t</code>: the probability of also connecting to the neighbors of a node each nodes connects to. The default value is (0), but could be increase to a small number to achieve higher clustering coefficient. </li>
 </ul>
 </li>
 </ul>
@@ -82,28 +100,37 @@ It creates graphs/networks with community labels, which can be used for evaluati
 <a id="how-to-run" class="anchor" href="#how-to-run" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>How to run</h3>
 
 <p>The source code is in Pyhton 2.7. 
-You can generate FARZ benchmarks from FARZ.py. See below for examples.</p>
+You can generate FARZ benchmarks from FARZ.py in src. 
+See <code>python FARZ.py -h</code> to examine the usage and options; or try the following examples.</p>
 
 <h3>
 <a id="examples" class="anchor" href="#examples" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Examples</h3>
 
-<p><code>params = {"n":1000, "k":4, "m":4, "alpha":0.5, "beta":0.8, "gamma":0.5}</code></p>
-
 <ul>
-<li>Use FARZ directly
+<li>
+<p>example 1: generate a network with 1000 nodes and about 5x1000 edges (m=5), with 4 communities, where 90% of edges fall within communities (beta=0.9)</p>
 
-<ul>
-<li><code>FARZ.realize(**params)</code></li>
-</ul>
+<p><code>python FARZ.py -n 1000 -m 5 -k 4 --beta 0.9</code></p>
 </li>
 <li>
-<p>Use batch generator</p>
+<p>example 2: generate a network with properties of example 1, where alpha = 0.2 and gamma = -0.8</p>
 
-<ul>
-<li>Generate a dataset of networks with <code>beta</code> varying from 0.5 to 1 with 0.05 steps, for each beta generate 10 networks, and write the networks in gml format.</li>
-</ul>
+<p><code>python FARZ.py -n 1000 -m 5 -k 4 --beta 0.9 --alpha 0.2 --gamma -0.8</code></p>
+</li>
+<li>
+<p>example 3: generate 10 sample networks with properties of example 1 and save them into ./data</p>
 
-<p><code>generate('beta', arange=(0.5,1,0.05), repeat =10, path='./vbeta', format = 'gml', params=params)</code></p>
+<p><code>python FARZ.py --path ./data -s 10 -n 1000 -m 5 -k 4 --beta 0.9</code></p>
+</li>
+<li>
+<p>example 4: repeat example 2, for beta that varies from 0.5 to 1 with 0.05 increments</p>
+
+<p><code>python FARZ.py --path ./data -s 10 -v beta -c [0.5,1,0.05] -n 1000 -m 5 -k 4</code></p>
+</li>
+<li>
+<p>example 5: generate overlapping communities, where each node belongs to at most 3 communities and the portion of overlapping nodes varies, overlapping communities are saved as a list format (a community per line)</p>
+
+<p><code>python FARZ.py -r 3 -v q --path ./data -s 5 --format list</code></p>
 </li>
 </ul>
 
@@ -115,18 +142,14 @@ You can generate FARZ benchmarks from FARZ.py. See below for examples.</p>
 <h3>
 <a id="support-or-contact" class="anchor" href="#support-or-contact" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Support or Contact</h3>
 
-<p>Reihaneh Rabbany (<a href="https://github.com/rabbanyk" class="user-mention">@rabbanyk</a>), <a href="mailto:rabbanyk@ualberta.ca">rabbanyk@ualberta.ca</a></p>
+<p>Reihaneh Rabbany, <a href="mailto:rabbanyk@ualberta.ca">rabbanyk@ualberta.ca</a></p>
       </section>
-    </div>
-
-    <!-- FOOTER  -->
-    <div id="footer_wrap" class="outer">
-      <footer class="inner">
-        <p class="copyright">FARZ maintained by <a href="https://github.com/rabbanyk">rabbanyk</a></p>
-        <p>Published with <a href="https://pages.github.com">GitHub Pages</a></p>
+      <footer>
+        <p>Project maintained by <a href="https://github.com/rabbanyk">rabbanyk</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://twitter.com/michigangraham">mattgraham</a></small></p>
       </footer>
     </div>
-
+    <!--[if !IE]><script>fixScale(document);</script><![endif]-->
               <script type="text/javascript">
             var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
             document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
@@ -137,7 +160,6 @@ You can generate FARZ benchmarks from FARZ.py. See below for examples.</p>
             pageTracker._trackPageview();
             } catch(err) {}
           </script>
-
 
   </body>
 </html>
