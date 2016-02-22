@@ -348,7 +348,8 @@ def main(argv):
             print '> python FARZ.py --path ./data -s 10 -n 1000 -m 5 -k 4 --beta 0.9\n'
             print '+ example 4: repeat example 2, for beta that varies from 0.5 to 1 with 0.05 increments'
             print '> python FARZ.py --path ./data -s 10 -v beta -c [0.5,1,0.05] -n 1000 -m 5 -k 4 \n'
-            
+            print '+ example 5: generate overlapping communities, where each node belongs to at most 3 communities and the portion of overlapping nodes varies'
+            print 'python FARZ.py -r 3 -v q --path ./datavrq -s 5 --format list\n'
             
             print '*** parameters:'
             print '-n: number of nodes, default (1000)'
