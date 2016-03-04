@@ -7,15 +7,15 @@ It creates graphs/networks with community labels, which can be used for evaluati
 ### Generator Parameters
 * main parameters
    + `n`: number of nodes
-   + `m`: half the average degree of nodes
+   + `m`: number of edges created per node (i.e. half the average degree of nodes)
    + `k`: number of communities
 * control parameters
    + `beta`: the strength of community structure, i.e. the probability of edges to be formed within communities, default (0.8)
    + `alpha`: the strength of common neighbor's effect on edge formation edges, default (0.5)
    + `gamma`: the strength of degree similarity effect on edge formation, default (0.5), can be negative for networks with negative degree correlation
 * overlap parameters
-   + `r`: the number of communities each node can belong to, default (1)
-   + `q`: the probability of a node belonging to the multiple communities, default (0.5)
+   + `r`: the maximum number of communities each node can belong to, default (1, which results in disjoint communities)
+   + `q`: the probability of a node belonging to the multiple communities, default (0.5, has an effect only if r>1)
 * config parameters
    + `phi`: the constant added to all community sizes, higher number makes the communities more balanced in size, default (1) which results in power law distribution for community sizes
    + `epsilon`: the probability of noisy/random edges, default (0.0000001)
