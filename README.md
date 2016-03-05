@@ -44,7 +44,7 @@ See ` python FARZ.py -h ` to examine the usage and options; or try the following
 	` python FARZ.py -r 3 -v q --path ./data -s 5 --format list`
 
 ### Supplementary Materials  
-<https://github.com/rabbanyk/FARZ/blob/master/FARZ_Supplementary.pdf>
+<http://webdocs.cs.ualberta.ca/~rabbanyk/supp.pdf>
 
 ### Support or Contact
 Reihaneh Rabbany, rabbanyk@ualberta.ca
