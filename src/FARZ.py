@@ -148,14 +148,6 @@ def common_neighbour(i, G, normalize=True):
     for j in p:  p[j] = p[j]*1.0 / maxp
     return p
 
-def co_membership(i, C):
-    p = {}
-    for k,uik in C.memberships[i]:
-        for j,ujk in C.groups[k]:
-            if j in p: p[j]+=(uik * ujk)
-            else: p[j] =  (uik * ujk)
-    return p
-
 def choose_community(i, G, C, alpha, beta, gamma, epsilon):
     mids =[k for  k,uik in C.memberships[i]]
     if random.random()< beta: #inside
@@ -186,18 +178,24 @@ def choose_node(i,c, G, C, alpha, beta, gamma, epsilon):
 
     norma = False
     cn = common_neighbour(i, G, normalize=norma)
-    dd = degree_similarity(i, ids, G, gamma, normalize=norma)
+    trim_ids = [id for id in ids if id in cn]
+    dd = degree_similarity(i, trim_ids, G, gamma, normalize=norma)
     
-    p = [epsilon for j in range(len(ids))]
-    for ind in range(len(ids)):
-        j = ids[ind]
-        p[ind] = combine(cn[j] if j in cn else 0 , dd[ind], alpha, gamma) + epsilon
-        
-    if(sum(p)==0): return  None
-    tmp = random_choice(range(len(p)), p ) #, size=1, replace = False)
-    # TODO add weights /direction/attributes
-    if tmp is None: return  None
-    return ids[tmp], p[tmp]
+    if random.random()<epsilon or len(trim_ids)<=0:
+        tmp = int(random.random() * len(ids))
+        if tmp==0: return  None
+        return ids[tmp], epsilon
+    else:
+        p = [0 for j in range(len(trim_ids))]
+        for ind in range(len(trim_ids)):
+            j = trim_ids[ind]
+            p[ind] = (cn[j]**alpha )/ ((dd[ind]+1)** gamma) 
+            
+        if(sum(p)==0): return  None
+        tmp = random_choice(range(len(p)), p ) #, size=1, replace = False)
+        # TODO add weights /direction/attributes
+        if tmp is None: return  None
+        return trim_ids[tmp], p[tmp]
 
  
 def connect_neighbor(i, j, pj, c, b,  G, C, beta):
