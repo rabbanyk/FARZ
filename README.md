@@ -1,5 +1,6 @@
 # FARZ 
 ## Benchmarks for Community Detection Algorithms
+Version 2
 
 FARZ is generator/simulator for networks with built-in community structure. 
 It creates graphs/networks with community labels, which can be used for evaluating community detection algorithms.
