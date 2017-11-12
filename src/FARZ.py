@@ -39,10 +39,9 @@ class Comms:
      def add(self, cluster_id, i):
          if i not in self.groups[cluster_id]:
             self.groups[cluster_id].append(i) 
-            if i in self.memberships:
-                self.memberships[i].append(cluster_id)
-            else:
-                self.memberships[i] =[cluster_id] 
+            if i not in self.memberships:
+				self.memberships[i] = {}
+            self.memberships[i][cluster_id] = 0 # TODO : strength
      def write_groups(self, path):
          with open(path, 'w') as f:
              for g in self.groups:
@@ -53,7 +52,7 @@ class Comms:
          with open(path, 'w') as f:
              for i in self.memberships.keys():
 				 f.write(str(i))           
-				 for cluster_id in self.memberships[i]:
+				 for cluster_id in self.memberships[i].keys():
 					 f.write(' ' + str(cluster_id))
 				 f.write('\n')				 
              
@@ -116,7 +115,7 @@ class Graph:
         import networkx as nx
         G=nx.Graph()
         for i in range(self.n):
-            G.add_node(i, {'c':str(sorted(C.memberships[i]))})
+            G.add_node(i, {'c':str(sorted(C.memberships[i].keys()))})
 #             G.add_node(i, {'c':int(C.memberships[i][0][0])})
         for i in range(len(self.edge_list)):
 #         for u,v, w in self.edge_list:
@@ -205,7 +204,7 @@ def update(i, neighbors, wij, G):
 			else: pk[i] = weight
 
 def choose_community(i, G, C, alpha, beta, gamma, epsilon):
-    mids = C.memberships[i][:]
+    mids = C.memberships[i].keys()[:]
     if random.random()< beta: #inside
         cids = mids
     else:     
