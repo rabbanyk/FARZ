@@ -2,6 +2,10 @@ import random
 import bisect
 import math
 import os 
+import time
+
+
+common_neighbours={}
 
 def random_choice(values, weights=None , size = 1, replace = True):
     if weights is None:
@@ -32,20 +36,26 @@ class Comms:
          self.groups = [[] for i in range(k)]
          self.memberships = {}
          
-     def add(self, cluster_id, i, s = 1):
-         if i not in  [m[0] for m in self.groups[cluster_id]]:
-            self.groups[cluster_id].append((i,s)) 
+     def add(self, cluster_id, i):
+         if i not in self.groups[cluster_id]:
+            self.groups[cluster_id].append(i) 
             if i in self.memberships:
-                self.memberships[i].append((cluster_id,s))
+                self.memberships[i].append(cluster_id)
             else:
-                self.memberships[i] =[(cluster_id,s)] 
+                self.memberships[i] =[cluster_id] 
      def write_groups(self, path):
          with open(path, 'w') as f:
              for g in self.groups:
-                 for i,s in g:
+                 for i in g:
                     f.write(str(i) + ' ')
                  f.write('\n')
-
+     def write_community(self, path):
+         with open(path, 'w') as f:
+             for i in self.memberships.keys():
+				 f.write(str(i))           
+				 for cluster_id in self.memberships[i]:
+					 f.write(' ' + str(cluster_id))
+				 f.write('\n')				 
              
             
 class Graph:
@@ -121,22 +131,21 @@ class Graph:
         return G 
  
  
-    def write_edgelist(self, path):
+    def write_edgelist(self, path, deli):
          with open(path, 'w') as f:
              for i,j,w in self.edge_list:
-                 f.write(str(i) + '\t'+str(j) + '\n')
+                 f.write(str(i) + deli +str(j) + '\n')
 
  
 def Q(G, C):
     q = 0.0
     m = 2 * len(G.edge_list)
     for c in C.groups:
-        for i,_ in c:
-            for j,_ in c:
+        for i in c:
+            for j in c:
                 q+= G.weight(i,j) - (G.deg[i]*G.deg[j]/(2*m))
     q /= 2*m
     return q
-
 def common_neighbour(i, G, normalize=True):
     p = {}
     for k,wik in G.neigh[i]:
@@ -148,8 +157,55 @@ def common_neighbour(i, G, normalize=True):
     for j in p:  p[j] = p[j]*1.0 / maxp
     return p
 
+def update_common_neighbour(i, j, wij, G):
+	# by adding an edge between i and j, the common neighbors of i and j's neighbor changes 
+	
+	if not G.weighted:
+		wij=1
+	if(i not in common_neighbours ):
+		common_neighbours[i]={}
+	pi = common_neighbours[i]
+		
+	for k,wjk in G.neigh[j]:
+		pk=common_neighbours[k]
+		if k in pi: pi[k]+=(wij * wjk) 
+		else: pi[k]= (wij * wjk)
+		if i!=k:
+			if i in pk: pk[i]+=(wij * wjk) 
+			else: pk[i]= (wij * wjk)
+		
+		
+	# by adding an edge between i and j, the common neighbors of j and i's neighbor changes	
+	if(j not in common_neighbours ):
+		common_neighbours[j]={}
+	pj = common_neighbours[j]
+		
+	for k,wik in G.neigh[i]:
+		pk=common_neighbours[k]
+		if k in pj: pj[k]+=(wij * wik) 
+		else: pj[k]= (wij * wik)
+		if j!=k:
+			if j in pk: pk[j]+=(wij * wik) 
+			else: pk[j]= (wij * wik)	
+
+def update(i, neighbors, wij, G):
+	if not G.weighted:
+		wij=1
+	if(i not in common_neighbours ):
+		common_neighbours[i]={}
+	pi = common_neighbours[i]
+		
+	for k,wjk in neighbors:
+		pk=common_neighbours[k]
+		weight = (wij * wjk)
+		if k in pi: pi[k] += weight
+		else: pi[k] = weight
+		if i!=k:
+			if i in pk: pk[i] += weight 
+			else: pk[i] = weight
+
 def choose_community(i, G, C, alpha, beta, gamma, epsilon):
-    mids =[k for  k,uik in C.memberships[i]]
+    mids = C.memberships[i][:]
     if random.random()< beta: #inside
         cids = mids
     else:     
@@ -171,13 +227,21 @@ def combine (a,b,alpha,gamma):
     return (a**alpha) / ((b+1)**gamma)
 
 def choose_node(i,c, G, C, alpha, beta, gamma, epsilon):
-    ids = [j for j,_ in C.groups[c] if j !=i ]
+    ids = C.groups[c][:]
+    if (i in ids):
+		ids.remove(i)
     #   also remove nodes that are already connected from the candidate list
     for k,_ in G.neigh[i]: 
         if k in ids: ids.remove(k) 
 
-    norma = False
-    cn = common_neighbour(i, G, normalize=norma)
+    norma = False	
+    #cn = common_neighbour(i, G, normalize=norma)
+    
+    cn={}
+    if i in common_neighbours:
+		cn= common_neighbours[i]
+	
+    	
     trim_ids = [id for id in ids if id in cn]
     dd = degree_similarity(i, trim_ids, G, gamma, normalize=norma)
     
@@ -200,21 +264,35 @@ def choose_node(i,c, G, C, alpha, beta, gamma, epsilon):
  
 def connect_neighbor(i, j, pj, c, b,  G, C, beta):
     if b<=0: return 
-    ids = [id for id,_ in C.groups[c]]
+    ids = C.groups[c][:]
     for k,wjk in G.neigh[j]:
         if (random.random() <b and k!=i and (k in ids or random.random()>beta)):
             G.add_edge(i,k,wjk*pj)
+            #update_common_neighbour(i,k,wjk*pj,G)
+            update(i,G.neigh[j],wjk*pj,G)
+            update(j,G.neigh[i],wjk*pj,G)
                     
 def connect(i, b,  G, C, alpha, beta, gamma, epsilon):
     #Choose community
+    #st=time.time()
     c = choose_community(i, G, C, alpha, beta, gamma, epsilon)
+    #print("--- choose_community %s seconds ---" % (time.time() - st))      
     if c is None: return
     #Choose node within community
+    st=time.time()
     tmp = choose_node(i, c, G, C, alpha, beta, gamma, epsilon)
+    #print("--- choose_node %s seconds ---" % (time.time() - st))      
     if tmp is None: return
     j, pj = tmp 
+    st=time.time()
     G.add_edge(i,j,pj)
+    #update_common_neighbour(i,j,pj,G)
+    update(i,G.neigh[j],pj,G)
+    update(j,G.neigh[i],pj,G)
+    #print("--- add_edge %s seconds ---" % (time.time() - st))      
+    st=time.time()
     connect_neighbor(i, j, pj , c, b,  G, C, beta)
+    #print("--- connect_neighbor %s seconds ---" % (time.time() - st))      
             
 def select_node(G, method = 'uniform'):
     if method=='uniform':   
@@ -244,6 +322,7 @@ def print_setting(n,m,k,alpha,beta,gamma, phi,o,q,epsilon,weighted,directed):
     print 'weighted' if weighted else '', 'directed' if directed else ''
     
 def realize(n, m,  k, b=0.0,  alpha=0.4, beta=0.5, gamma=0.1, phi=1, o=1, q = 0.5, epsilon = 0.0000001, weighted =False, directed=False):
+    start_time = time.time()
     print_setting(n,m,k,alpha,beta,gamma, phi,o,q,epsilon,weighted,directed)
     G =  Graph()
     C = Comms(k)
@@ -254,7 +333,8 @@ def realize(n, m,  k, b=0.0,  alpha=0.4, beta=0.5, gamma=0.1, phi=1, o=1, q = 0.
         connect(i,b, G, C, alpha, beta, gamma, epsilon)
         for e in range(1,m):
             j = select_node(G) 
-            connect(j, b, G, C, alpha, beta, gamma, epsilon)        
+            connect(j, b, G, C, alpha, beta, gamma, epsilon) 
+    print("--- realize %s seconds ---" % (time.time() - start_time))                
     return G,C
 
 
@@ -290,15 +370,18 @@ def write_to_file(G,C,path, name,format,params):
         G = G.to_nx(C)
         if not params['directed']: G = G.to_undirected()
         nx.write_gml(G, path+'/'+name+'.gml')
-    if format == 'list': 
-        G.write_edgelist(path+'/'+name+'.dat')
+    elif format == 'list1': 
+        G.write_edgelist(path+'/'+name+'.dat', '\t')
         C.write_groups( path+'/'+name+'.lgt')
+    elif format == 'list2': 
+        G.write_edgelist(path+'/'+name+'.edgeList', ' ')
+        C.write_community( path+'/'+name+'.community')
  
 
 default_ranges = {'beta':(0.5,1,0.05), 'k':(2,50,5), 'm':(2,11,1) , 'phi':(1,100,10), 'o':(1,10,1), 'q':(0.0,1,0.1)}
 default_FARZ_setting = {"n":1000, "k":4, "m":5, "alpha":0.5,"gamma":0.5, "beta":.8, "phi":1, "o":1, 'q':0.5,  "b":0.0, "epsilon":0.0000001, 'directed':False, 'weighted':False}
 default_batch_setting= {'vari':None, 'arange':None, 'repeat':1, 'path':'.', 'net_name':'network', 'format':'gml', 'farz_params':None}
-supported_formats = ['gml','list']
+supported_formats = ['gml','list1','list2']
 def generate( vari =None, arange =None, repeat = 1, path ='.', net_name = 'network',format ='gml', farz_params= default_FARZ_setting.copy()):
     def get_range(s,e,i):
         res =[]
@@ -312,6 +395,13 @@ def generate( vari =None, arange =None, repeat = 1, path ='.', net_name = 'netwo
             G, C =realize(**farz_params)
             name = net_name+( str(r+1) if repeat>1 else '') 
             write_to_file(G,C,path,name,format,farz_params)
+            '''
+            for id in common_neighbours.keys():
+				print(id)
+				#print(common_neighbours[id])
+				#print("vs")
+				print(common_neighbour(id, G,False))
+			'''	
         return
     if arange ==None:
         arange = default_ranges[vari]
@@ -322,6 +412,8 @@ def generate( vari =None, arange =None, repeat = 1, path ='.', net_name = 'netwo
             G, C =realize(**farz_params)
             name = 'S'+str(i+1)+'-'+net_name+ (str(r+1) if repeat>1 else '') 
             write_to_file(G,C,path,name,format,farz_params)
+            
+       
 
 
 import sys
@@ -464,11 +556,15 @@ def main(argv):
                 
     batch_setting['farz_params'] = FARZsetting
     print 'generating FARZ benchmark(s) ... '
+    start_time = time.time()
     generate( **batch_setting)
-          
+    print("--- generate %s seconds ---" % (time.time() - start_time))      
 
 if __name__ == "__main__":
+   random.seed(9876)
    main(sys.argv[1:])
+    
+   
    
    
 # python FARZ.py --path ./dataVb55 -s 10 -v beta
