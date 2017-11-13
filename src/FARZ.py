@@ -67,22 +67,22 @@ class Graph:
         self.edge_list = [] 
         self.edge_time = []
         self.deg = []
-        self.neigh =  [[]]
+        self.neigh =  {}
         return 
 
     def add_node(self):
         self.deg.append(0)
-        self.neigh.append([])
+        self.neigh[self.n]={}
         self.n+=1
     
     def weight(self, u, v):
-        for i,w in self.neigh[u]:
-            if i == v: return w
+        if v in self.neigh[u]:
+			return w
         return 0
     
     def is_neigh(self, u, v):
-        for i,_ in self.neigh[u]:
-            if i == v: return True
+        if v in self.neigh[u]:
+			return True
         return False
     
     def add_edge(self, u, v, w=1):
@@ -91,12 +91,12 @@ class Graph:
         self.edge_list.append((u,v,w) if u<v or self.directed else  (v,u,w))
         self.edge_time.append(self.counter)
         self.counter +=1
-        self.neigh[u].append((v,w))
+        self.neigh[u][v] = w
         self.deg[v]+=w
         if  self.deg[v]>self.max_degree: self.max_degree = self.deg[v]
         
         if not self.directed: #if directed deg is indegree, outdegree = len(negh)
-            self.neigh[v].append((u,w))
+            self.neigh[v][u] = w
             self.deg[u]+=w
             if  self.deg[u]>self.max_degree: self.max_degree = self.deg[u]
 
@@ -147,8 +147,8 @@ def Q(G, C):
     return q
 def common_neighbour(i, G, normalize=True):
     p = {}
-    for k,wik in G.neigh[i]:
-        for j,wjk in G.neigh[k]:
+    for k,wik in G.neigh[i].items():
+        for j,wjk in G.neigh[k].items():
             if j in p: p[j]+=(wik * wjk) 
             else: p[j]= (wik * wjk)
     if len(p)<=0 or not normalize: return p
@@ -165,7 +165,7 @@ def update_common_neighbour(i, j, wij, G):
 		common_neighbours[i]={}
 	pi = common_neighbours[i]
 		
-	for k,wjk in G.neigh[j]:
+	for k,wjk in G.neigh[j].items():
 		pk=common_neighbours[k]
 		if k in pi: pi[k]+=(wij * wjk) 
 		else: pi[k]= (wij * wjk)
@@ -179,8 +179,8 @@ def update_common_neighbour(i, j, wij, G):
 		common_neighbours[j]={}
 	pj = common_neighbours[j]
 		
-	for k,wik in G.neigh[i]:
-		pk=common_neighbours[k]
+	for k,wik in G.neigh[i].items():
+		pk = common_neighbours[k]
 		if k in pj: pj[k]+=(wij * wik) 
 		else: pj[k]= (wij * wik)
 		if j!=k:
@@ -194,7 +194,7 @@ def update(i, neighbors, wij, G):
 		common_neighbours[i]={}
 	pi = common_neighbours[i]
 		
-	for k,wjk in neighbors:
+	for k,wjk in neighbors.items():
 		pk=common_neighbours[k]
 		weight = (wij * wjk)
 		if k in pi: pi[k] += weight
@@ -230,7 +230,7 @@ def choose_node(i,c, G, C, alpha, beta, gamma, epsilon):
     if (i in ids):
 		ids.remove(i)
     #   also remove nodes that are already connected from the candidate list
-    for k,_ in G.neigh[i]: 
+    for k,_ in G.neigh[i].items(): 
         if k in ids: ids.remove(k) 
 
     norma = False	
@@ -264,7 +264,7 @@ def choose_node(i,c, G, C, alpha, beta, gamma, epsilon):
 def connect_neighbor(i, j, pj, c, b,  G, C, beta):
     if b<=0: return 
     ids = C.groups[c][:]
-    for k,wjk in G.neigh[j]:
+    for k,wjk in G.neigh[j].items():
         if (random.random() <b and k!=i and (k in ids or random.random()>beta)):
             G.add_edge(i,k,wjk*pj)
             #update_common_neighbour(i,k,wjk*pj,G)
