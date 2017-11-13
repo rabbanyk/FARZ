@@ -226,25 +226,29 @@ def combine (a,b,alpha,gamma):
     return (a**alpha) / ((b+1)**gamma)
 
 def choose_node(i,c, G, C, alpha, beta, gamma, epsilon):
+    
+    '''
     ids = C.groups[c][:]
     if (i in ids):
 		ids.remove(i)
     #   also remove nodes that are already connected from the candidate list
     for k,_ in G.neigh[i].items(): 
         if k in ids: ids.remove(k) 
-
+	'''
     norma = False	
     #cn = common_neighbour(i, G, normalize=norma)
     
     cn={}
     if i in common_neighbours:
 		cn= common_neighbours[i]
-	
-    	
-    trim_ids = [id for id in ids if id in cn]
+		
+    trim_ids = [id for id in cn.keys() if c in C.memberships[id] and id not in G.neigh[i] and id!=i]
+    #trim_ids = sorted(trim_ids) #for testing
     dd = degree_similarity(i, trim_ids, G, gamma, normalize=norma)
     
     if random.random()<epsilon or len(trim_ids)<=0:
+        ids = [id for id in C.groups[c] if id not in G.neigh[i] and id!=i]
+        #ids = sorted(ids) # for testing
         tmp = int(random.random() * len(ids))
         if tmp==0: return  None
         return ids[tmp], epsilon
