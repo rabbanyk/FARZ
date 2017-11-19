@@ -281,12 +281,12 @@ def connect(i, b,  G, C, alpha, beta, gamma, epsilon):
     st=time.time()
     c = choose_community(i, G, C, alpha, beta, gamma, epsilon)
     #print("--- choose_community %s seconds ---" % (time.time() - st))      
-    if c is None: return
+    if c is None: return False
     #Choose node within community
     st=time.time()
     tmp = choose_node(i, c, G, C, alpha, beta, gamma, epsilon)
     #print("--- choose_node %s seconds ---" % (time.time() - st))      
-    if tmp is None: return
+    if tmp is None: return False
     j, pj = tmp 
     st=time.time()
     G.add_edge(i,j,pj)
@@ -296,6 +296,7 @@ def connect(i, b,  G, C, alpha, beta, gamma, epsilon):
     #print("--- add_edge %s seconds ---" % (time.time() - st))      
     st=time.time()
     connect_neighbor(i, j, pj , c, b,  G, C, beta)
+    return True
     #print("--- connect_neighbor %s seconds ---" % (time.time() - st))      
             
 def select_node(G, method = 'uniform'):
@@ -346,14 +347,17 @@ def realize(n, m,  k, b=0.0,  alpha=0.4, beta=0.5, gamma=0.1, phi=1, o=1, q = 0.
     for i in range(k):
 		G.add_node()
 		C.add(i, i)
-    for i in range(k, n-k):
+    for i in range(k, n):
 		#if i%10==0: print '-- ',G.n, len(G.edge_list)
         G.add_node()
         assign(i, C, G, phi, o, q)
         #connect(i,b, G, C, alpha, beta, gamma, epsilon)
-        for e in range(1,m):
+        e = 1 
+        while e < m:
             j = select_node(G) 
-            connect(j, b, G, C, alpha, beta, gamma, epsilon) 
+            added = connect(j, b, G, C, alpha, beta, gamma, epsilon) 
+            if added:
+				e += 1
     #print("--- realize %s seconds ---" % (time.time() - start_time))                
     return G,C
 
