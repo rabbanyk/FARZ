@@ -5,7 +5,7 @@ import os
 import time
 
 
-common_neighbours={}
+common_neighbours = {}
 
 def random_choice(values, weights=None , size = 1, replace = True):
     if weights is None:
@@ -39,9 +39,9 @@ class Comms:
      def add(self, cluster_id, i):
          if i not in self.groups[cluster_id]:
             self.groups[cluster_id].append(i) 
-            if i not in self.memberships:
-				self.memberships[i] = {}
-            self.memberships[i][cluster_id] = 0 # TODO : strength
+         if i not in self.memberships:
+			self.memberships[i] = {}
+         self.memberships[i][cluster_id] = 0 # TODO : strength
      def write_groups(self, path):
          with open(path, 'w') as f:
              for g in self.groups:
@@ -50,11 +50,13 @@ class Comms:
                  f.write('\n')
      def write_community(self, path):
          with open(path, 'w') as f:
-             for i in self.memberships.keys():
+             for ind in range(len(self.memberships.keys())):
+				 i = self.memberships.keys()[ind]
 				 f.write(str(i))           
 				 for cluster_id in self.memberships[i].keys():
 					 f.write(' ' + str(cluster_id))
-				 f.write('\n')				 
+				 if ind != len(self.memberships.keys())-1:
+					f.write('\n')				 
              
             
 class Graph:
@@ -132,8 +134,13 @@ class Graph:
  
     def write_edgelist(self, path, deli):
          with open(path, 'w') as f:
+             first = True
              for i,j,w in self.edge_list:
-                 f.write(str(i) + deli +str(j) + '\n')
+                 if first:
+					 first = False
+                 else:
+					 f.write('\n')	 
+                 f.write(str(i) + deli +str(j))
 
  
 def Q(G, C):
@@ -187,15 +194,17 @@ def update_common_neighbour(i, j, wij, G):
 			if j in pk: pk[j]+=(wij * wik) 
 			else: pk[j]= (wij * wik)	
 
-def update(i, neighbors, wij, G):
-	if not G.weighted:
+def update(i, neighbors, wij, is_weighted):
+	if not is_weighted:
 		wij=1
 	if(i not in common_neighbours ):
-		common_neighbours[i]={}
+		common_neighbours[i] = {}
 	pi = common_neighbours[i]
 		
 	for k,wjk in neighbors.items():
-		pk=common_neighbours[k]
+		if(k not in common_neighbours ):
+			common_neighbours[k] = {}
+		pk = common_neighbours[k]
 		weight = (wij * wjk)
 		if k in pi: pi[k] += weight
 		else: pi[k] = weight
@@ -226,25 +235,17 @@ def combine (a,b,alpha,gamma):
     return (a**alpha) / ((b+1)**gamma)
 
 def choose_node(i,c, G, C, alpha, beta, gamma, epsilon):
-    
-    '''
-    ids = C.groups[c][:]
-    if (i in ids):
-		ids.remove(i)
-    #   also remove nodes that are already connected from the candidate list
-    for k,_ in G.neigh[i].items(): 
-        if k in ids: ids.remove(k) 
-	'''
-    norma = False	
-    #cn = common_neighbour(i, G, normalize=norma)
-    
+        
+    norma = False        
     cn={}
     if i in common_neighbours:
 		cn= common_neighbours[i]
 		
     trim_ids = [id for id in cn.keys() if c in C.memberships[id] and id not in G.neigh[i] and id!=i]
     #trim_ids = sorted(trim_ids) #for testing
+    #st = time.time()
     dd = degree_similarity(i, trim_ids, G, gamma, normalize=norma)
+    #print("--- degree_similarity %s seconds ---" % (time.time() - st))      
     
     if random.random()<epsilon or len(trim_ids)<=0:
         ids = [id for id in C.groups[c] if id not in G.neigh[i] and id!=i]
@@ -272,12 +273,12 @@ def connect_neighbor(i, j, pj, c, b,  G, C, beta):
         if (random.random() <b and k!=i and (k in ids or random.random()>beta)):
             G.add_edge(i,k,wjk*pj)
             #update_common_neighbour(i,k,wjk*pj,G)
-            update(i,G.neigh[j],wjk*pj,G)
-            update(j,G.neigh[i],wjk*pj,G)
+            update(i,G.neigh[j],wjk*pj,G.weighted)
+            update(j,G.neigh[i],wjk*pj,G.weighted)
                     
 def connect(i, b,  G, C, alpha, beta, gamma, epsilon):
     #Choose community
-    #st=time.time()
+    st=time.time()
     c = choose_community(i, G, C, alpha, beta, gamma, epsilon)
     #print("--- choose_community %s seconds ---" % (time.time() - st))      
     if c is None: return
@@ -290,8 +291,8 @@ def connect(i, b,  G, C, alpha, beta, gamma, epsilon):
     st=time.time()
     G.add_edge(i,j,pj)
     #update_common_neighbour(i,j,pj,G)
-    update(i,G.neigh[j],pj,G)
-    update(j,G.neigh[i],pj,G)
+    update(i,G.neigh[j],pj,G.weighted)
+    update(j,G.neigh[i],pj,G.weighted)
     #print("--- add_edge %s seconds ---" % (time.time() - st))      
     st=time.time()
     connect_neighbor(i, j, pj , c, b,  G, C, beta)
@@ -301,19 +302,31 @@ def select_node(G, method = 'uniform'):
     if method=='uniform':   
         return int(random.random() * G.n) # uniform
     else:
+		# todo no need to recalculate p each time
         if method == 'older_less_active': p = [(i+1) for i in range(G.n)] # older less active
         elif method == 'younger_less_active' :  p = [G.n-i for i in range(G.n)] # younger less active
         else:  p = [1 for i in range(G.n)] # uniform
         return  random_choice(range(len(p)), p ) #, size=1, replace = False)[0]
 
-def assign(i, C, e=1, r=1, q = 0.5):
-    p = [e +len(c) for c in C.groups]
-    id = random_choice(range(C.k),p )
-    C.add(id, i)
+def assign(i, C, G, e=1, r=1, q = 0.5):
+    graphsize = G.n
+    if graphsize==1:
+		C.add(0, i)
+		return
+    node = int(random.random() * (graphsize-1))
+    candidate_communities = C.memberships[node]
+    cind = int(random.random() * len(candidate_communities))
+    cid = candidate_communities.keys()[cind]
+    C.add(cid, i)
+    G.add_edge(i,node)
     for j in range(1,r): #todo add strength for fuzzy
         if (random.random()<q): 
-              id = random_choice(range(C.k),p )
-              C.add(id, i)
+			node = int(random.random() * (graphsize-1))
+			candidate_communities = C.memberships[node]
+			cind = int(random.random() * len(candidate_communities))
+			cid = candidate_communities.keys()[cind]
+			C.add(cid, i)
+			G.add_edge(i,node)
     return
  
 def print_setting(n,m,k,alpha,beta,gamma, phi,o,q,epsilon,weighted,directed):
@@ -326,18 +339,22 @@ def print_setting(n,m,k,alpha,beta,gamma, phi,o,q,epsilon,weighted,directed):
     
 def realize(n, m,  k, b=0.0,  alpha=0.4, beta=0.5, gamma=0.1, phi=1, o=1, q = 0.5, epsilon = 0.0000001, weighted =False, directed=False):
     start_time = time.time()
-    print_setting(n,m,k,alpha,beta,gamma, phi,o,q,epsilon,weighted,directed)
+    #print_setting(n,m,k,alpha,beta,gamma, phi,o,q,epsilon,weighted,directed)
     G =  Graph()
     C = Comms(k)
-    for i in range(n):
-#         if i%10==0: print '-- ',G.n, len(G.edge_list)
+    # add a representative to each community
+    for i in range(k):
+		G.add_node()
+		C.add(i, i)
+    for i in range(k, n-k):
+		#if i%10==0: print '-- ',G.n, len(G.edge_list)
         G.add_node()
-        assign(i, C, phi, o, q)
-        connect(i,b, G, C, alpha, beta, gamma, epsilon)
+        assign(i, C, G, phi, o, q)
+        #connect(i,b, G, C, alpha, beta, gamma, epsilon)
         for e in range(1,m):
             j = select_node(G) 
             connect(j, b, G, C, alpha, beta, gamma, epsilon) 
-    print("--- realize %s seconds ---" % (time.time() - start_time))                
+    #print("--- realize %s seconds ---" % (time.time() - start_time))                
     return G,C
 
 
@@ -367,7 +384,7 @@ def props():
 
 def write_to_file(G,C,path, name,format,params):
     if not os.path.exists(path+'/'): os.makedirs(path+'/')
-    print 'n=',G.n,' e=', len(G.edge_list), 'generated, writing to ', path+'/'+name, ' in', format
+    #print 'n=',G.n,' e=', len(G.edge_list), 'generated, writing to ', path+'/'+name, ' in', format
     if format == 'gml':
         import networkx as nx
         G = G.to_nx(C)
@@ -558,10 +575,10 @@ def main(argv):
                 sys.exit(2)
                 
     batch_setting['farz_params'] = FARZsetting
-    print 'generating FARZ benchmark(s) ... '
-    start_time = time.time()
+    #print 'generating FARZ benchmark(s) ... '
+    #start_time = time.time()
     generate( **batch_setting)
-    print("--- generate %s seconds ---" % (time.time() - start_time))      
+    #print((time.time() - start_time))      
 
 if __name__ == "__main__":
    random.seed(9876)
