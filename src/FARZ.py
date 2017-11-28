@@ -39,9 +39,7 @@ class Comms:
      def add(self, cluster_id, i):
          if i not in self.groups[cluster_id]:
             self.groups[cluster_id].append(i) 
-         if i not in self.memberships:
-			self.memberships[i] = {}
-         self.memberships[i][cluster_id] = 0 # TODO : strength
+         self.memberships[i] = cluster_id
      def write_groups(self, path):
          with open(path, 'w') as f:
              for g in self.groups:
@@ -53,8 +51,8 @@ class Comms:
              for ind in range(len(self.memberships.keys())):
 				 i = self.memberships.keys()[ind]
 				 f.write(str(i))           
-				 for cluster_id in self.memberships[i].keys():
-					 f.write(' ' + str(cluster_id))
+				 cluster_id = self.memberships[i]
+				 f.write(' ' + str(cluster_id))
 				 if ind != len(self.memberships.keys())-1:
 					f.write('\n')				 
              
@@ -110,20 +108,17 @@ class Graph:
         G=nx.Graph()
         for u,v, w in self.edge_list:
             G.add_edge(u, v)
-#         G.add_edges_from(self.edge_list)
+        
         return G
     
     def to_nx(self, C):
         import networkx as nx
         G=nx.Graph()
         for i in range(self.n):
-            G.add_node(i, {'c':str(sorted(C.memberships[i].keys()))})
-#             G.add_node(i, {'c':int(C.memberships[i][0][0])})
+            G.add_node(i, {'c':str(C.memberships[i])})
         for i in range(len(self.edge_list)):
-#         for u,v, w in self.edge_list:
             u,v, w = self.edge_list[i]
-            G.add_edge(u, v, weight=w, capacity=self.edge_time[i])
-#         G.add_edges_from(self.edge_list)
+            G.add_edge(u, v, weight=w, capacity=self.edge_time[i]) 
         return G
     
     def to_ig(self):
@@ -213,11 +208,11 @@ def update(i, neighbors, wij, is_weighted):
 			else: pk[i] = weight
 
 def choose_community(i, G, C, alpha, beta, gamma, epsilon):
-    mids = C.memberships[i].keys()[:]
-    if random.random()< beta: #inside
-        cids = mids
+    mids = C.memberships[i]
+    if random.random()< beta and len(C.groups[mids])>1: #inside
+        return mids
     else:     
-        cids = [j for j in range(len(C.groups)) if j not in mids] #:  cids.append(j)
+        cids = [j for j in range(len(C.groups)) if j != mids] #:  cids.append(j)
 
     return cids[ int(random.random()*len(cids))] if len(cids)>0 else None
 
@@ -241,7 +236,7 @@ def choose_node(i,c, G, C, alpha, beta, gamma, epsilon):
     if i in common_neighbours:
 		cn= common_neighbours[i]
 		
-    trim_ids = [id for id in cn.keys() if c in C.memberships[id] and id not in G.neigh[i] and id!=i]
+    trim_ids = [id for id in cn.keys() if c == C.memberships[id] and id not in G.neigh[i] and id!=i]
     #trim_ids = sorted(trim_ids) #for testing
     #st = time.time()
     dd = degree_similarity(i, trim_ids, G, gamma, normalize=norma)
@@ -258,7 +253,7 @@ def choose_node(i,c, G, C, alpha, beta, gamma, epsilon):
         for ind in range(len(trim_ids)):
             j = trim_ids[ind]
             p[ind] = (cn[j]**alpha )/ ((dd[ind]+1)** gamma) 
-            
+        # TODO shiva remove 262 265    
         if(sum(p)==0): return  None
         tmp = random_choice(range(len(p)), p ) #, size=1, replace = False)
         # TODO add weights /direction/attributes
@@ -309,25 +304,15 @@ def select_node(G, method = 'uniform'):
         else:  p = [1 for i in range(G.n)] # uniform
         return  random_choice(range(len(p)), p ) #, size=1, replace = False)[0]
 
-def assign(i, C, G, e=1, r=1, q = 0.5):
+def assign(i, C, G):
     graphsize = G.n
     if graphsize==1:
 		C.add(0, i)
 		return
     node = int(random.random() * (graphsize-1))
-    candidate_communities = C.memberships[node]
-    cind = int(random.random() * len(candidate_communities))
-    cid = candidate_communities.keys()[cind]
+    cid = C.memberships[node]
     C.add(cid, i)
     G.add_edge(i,node)
-    for j in range(1,r): #todo add strength for fuzzy
-        if (random.random()<q): 
-			node = int(random.random() * (graphsize-1))
-			candidate_communities = C.memberships[node]
-			cind = int(random.random() * len(candidate_communities))
-			cid = candidate_communities.keys()[cind]
-			C.add(cid, i)
-			G.add_edge(i,node)
     return
  
 def print_setting(n,m,k,alpha,beta,gamma, phi,o,q,epsilon,weighted,directed):
@@ -347,18 +332,17 @@ def realize(n, m,  k, b=0.0,  alpha=0.4, beta=0.5, gamma=0.1, phi=1, o=1, q = 0.
     for i in range(k):
 		G.add_node()
 		C.add(i, i)
-    for i in range(k, n):
+    for i in range(k, n+k): # m*(n-k) + m*k = m*n
 		#if i%10==0: print '-- ',G.n, len(G.edge_list)
-        G.add_node()
-        assign(i, C, G, phi, o, q)
-        #connect(i,b, G, C, alpha, beta, gamma, epsilon)
-        e = 1 
-        while e < m:
-            j = select_node(G) 
-            added = connect(j, b, G, C, alpha, beta, gamma, epsilon) 
-            if added:
-				e += 1
+		if i < n:
+			G.add_node()
+			assign(i, C, G)
+        
+		for e in range(1,m):
+			j = select_node(G)
+			connect(j, b, G, C, alpha, beta, gamma, epsilon)
     #print("--- realize %s seconds ---" % (time.time() - start_time))                
+    
     return G,C
 
 
