@@ -446,8 +446,8 @@ def main(argv):
             print '> python FARZ.py --path ./data -s 10 -n 1000 -m 5 -k 4 --beta 0.9\n'
             print '+ example 4: repeat example 2, for beta that varies from 0.5 to 1 with 0.05 increments'
             print '> python FARZ.py --path ./data -s 10 -v beta -c [0.5,1,0.05] -n 1000 -m 5 -k 4 \n'
-            print '+ example 5: generate overlapping communities, where each node belongs to at most 3 communities and the portion of overlapping nodes varies'
-            print 'python FARZ.py -r 3 -v q --path ./datavrq -s 5 --format list\n'
+            #print '+ example 5: generate overlapping communities, where each node belongs to at most 3 communities and the portion of overlapping nodes varies'
+            #print 'python FARZ.py -r 3 -v q --path ./datavrq -s 5 --format list\n'
             
             print '*** parameters:'
             print '-n: number of nodes, default (1000)'
@@ -457,8 +457,8 @@ def main(argv):
             print '-a [or --alpha]: the strength of common neighbor\'s effect on edge formation edges, default (0.5)'
             print '-g [or --gamma]: the strength of degree similarity effect on edge formation, default (0.5), can be negative for networks with negative degree correlation'
             print '-p [or --phi]: the constant added to all community sizes, higher number makes the communities more balanced in size, default (1), which results in power law distribution for community sizes'
-            print '-r: the number of communities each node can belong to, default (1)' 
-            print '-q: the probability of a node belonging to the multiple communities, default (0.5)' 
+            #print '-r: the number of communities each node can belong to, default (1)' 
+            #print '-q: the probability of a node belonging to the multiple communities, default (0.5)' 
             print '-e [or --epsilon]: the probability of noisy/random edges, default (0.0000001)'
             print '-t: the probability of also connecting to the neighbors of a node each nodes connects to. The default value is (0), but could be increased to a small number to achieve higher clustering coefficient. \n'
 
@@ -536,17 +536,7 @@ def main(argv):
             try: FARZsetting['phi'] = int(arg)
             except ValueError:
                 print 'Invalid Number , try -h to see the usage and options'
-                sys.exit(2)         
-        elif opt in ("-r","--overlap"):
-            try: FARZsetting['o'] = int(arg)
-            except ValueError:
-                print 'Invalid Number , try -h to see the usage and options'
-                sys.exit(2)      
-        elif opt in ("-q","--oProb"):
-            try: FARZsetting['q'] = float(arg)
-            except ValueError:
-                print 'Invalid Number , try -h to see the usage and options'
-                sys.exit(2)
+                sys.exit(2)                 
         elif opt in ("-d","--directed"):
             FARZsetting['directed'] = True
         elif opt in ("-w","--wighted"):
@@ -561,6 +551,18 @@ def main(argv):
             except ValueError:
                 print 'Invalid Number , try -h to see the usage and options'
                 sys.exit(2)
+		'''
+		elif opt in ("-r","--overlap"):
+			try: FARZsetting['o'] = int(arg)
+			except ValueError:
+				print 'Invalid Number , try -h to see the usage and options'
+				sys.exit(2)      
+		elif opt in ("-q","--oProb"):
+			try: FARZsetting['q'] = float(arg)
+			except ValueError:
+				print 'Invalid Number , try -h to see the usage and options'
+				sys.exit(2)
+		'''        
                 
     batch_setting['farz_params'] = FARZsetting
     #print 'generating FARZ benchmark(s) ... '
