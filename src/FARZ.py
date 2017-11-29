@@ -4,8 +4,9 @@ import math
 import os 
 import time
 import numpy as np
-
-
+import networkx as nx
+import sys
+import getopt
 common_neighbours = {}
 
 class Comms:
@@ -55,7 +56,7 @@ class Graph:
     
     def weight(self, u, v):
         if v in self.neigh[u]:
-			return w
+			return self.neigh[u][v]
         return 0
     
     def is_neigh(self, u, v):
@@ -82,7 +83,6 @@ class Graph:
     
      
     def to_nx(self):
-        import networkx as nx
         G=nx.Graph()
         for u,v, w in self.edge_list:
             G.add_edge(u, v)
@@ -90,7 +90,6 @@ class Graph:
         return G
     
     def to_nx(self, C):
-        import networkx as nx
         G=nx.Graph()
         for i in range(self.n):
             G.add_node(i, {'c':str(C.memberships[i])})
@@ -125,47 +124,6 @@ def Q(G, C):
                 q+= G.weight(i,j) - (G.deg[i]*G.deg[j]/(2*m))
     q /= 2*m
     return q
-def common_neighbour(i, G, normalize=True):
-    p = {}
-    for k,wik in G.neigh[i].items():
-        for j,wjk in G.neigh[k].items():
-            if j in p: p[j]+=(wik * wjk) 
-            else: p[j]= (wik * wjk)
-    if len(p)<=0 or not normalize: return p
-    maxp = p[max(p, key = lambda i: p[i])]
-    for j in p:  p[j] = p[j]*1.0 / maxp
-    return p
-
-def update_common_neighbour(i, j, wij, G):
-	# by adding an edge between i and j, the common neighbors of i and j's neighbor changes 
-	
-	if not G.weighted:
-		wij=1
-	if(i not in common_neighbours ):
-		common_neighbours[i]={}
-	pi = common_neighbours[i]
-		
-	for k,wjk in G.neigh[j].items():
-		pk=common_neighbours[k]
-		if k in pi: pi[k]+=(wij * wjk) 
-		else: pi[k]= (wij * wjk)
-		if i!=k:
-			if i in pk: pk[i]+=(wij * wjk) 
-			else: pk[i]= (wij * wjk)
-		
-		
-	# by adding an edge between i and j, the common neighbors of j and i's neighbor changes	
-	if(j not in common_neighbours ):
-		common_neighbours[j]={}
-	pj = common_neighbours[j]
-		
-	for k,wik in G.neigh[i].items():
-		pk = common_neighbours[k]
-		if k in pj: pj[k]+=(wij * wik) 
-		else: pj[k]= (wij * wik)
-		if j!=k:
-			if j in pk: pk[j]+=(wij * wik) 
-			else: pk[j]= (wij * wik)	
 
 def update(i, neighbors, wij, is_weighted):
 	if not is_weighted:
@@ -249,8 +207,9 @@ def connect_neighbor(i, j, pj, c, b,  G, C, beta):
     for k,wjk in G.neigh[j].items():
         if (random.random() <b and k!=i and (k in ids or random.random()>beta)):
             G.add_edge(i,k,wjk*pj)
-            #update_common_neighbour(i,k,wjk*pj,G)
+            #by adding an edge between i and j, the common neighbors of j and i's neighbor changes	
             update(i,G.neigh[j],wjk*pj,G.weighted)
+            #by adding an edge between i and j, the common neighbors of i and j's neighbor changes	
             update(j,G.neigh[i],wjk*pj,G.weighted)
                     
 def connect(i, b,  G, C, alpha, beta, gamma, epsilon):
@@ -355,7 +314,6 @@ def write_to_file(G,C,path, name,format,params):
     if not os.path.exists(path+'/'): os.makedirs(path+'/')
     #print 'n=',G.n,' e=', len(G.edge_list), 'generated, writing to ', path+'/'+name, ' in', format
     if format == 'gml':
-        import networkx as nx
         G = G.to_nx(C)
         if not params['directed']: G = G.to_undirected()
         nx.write_gml(G, path+'/'+name+'.gml')
@@ -405,9 +363,8 @@ def generate( vari =None, arange =None, repeat = 1, path ='.', net_name = 'netwo
        
 
 
-import sys
+
 def main(argv):
-    import getopt
     FARZsetting = default_FARZ_setting.copy()
     batch_setting= default_batch_setting.copy()
     try:    
