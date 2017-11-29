@@ -3,32 +3,10 @@ import bisect
 import math
 import os 
 import time
+import numpy as np
 
 
 common_neighbours = {}
-
-def random_choice(values, weights=None , size = 1, replace = True):
-    if weights is None:
-        i = int(random.random() * len(values))
-    else :
-        total = 0
-        cum_weights = []
-        for w in weights:
-            total += w
-            cum_weights.append(total)
-        x = random.random() * total
-        i = bisect.bisect(cum_weights, x)
-    if size <=1: 
-        if len(values)>i: return values[i] 
-        else: return None
-    else: 
-        cval = [values[j] for j in range(len(values)) if replace or i<>j]
-        if weights is None: cwei=None 
-        else: cwei = [weights[j] for j in range(len(weights)) if replace or i<>j]
-        tmp= random_choice(cval, cwei, size-1, replace)
-        if not isinstance(tmp,list): tmp = [tmp]
-        tmp.append(values[i])
-        return tmp 
 
 class Comms:
      def __init__(self, k):
@@ -249,13 +227,17 @@ def choose_node(i,c, G, C, alpha, beta, gamma, epsilon):
         if tmp==0: return  None
         return ids[tmp], epsilon
     else:
+        totalP = 0.0
         p = [0 for j in range(len(trim_ids))]
         for ind in range(len(trim_ids)):
             j = trim_ids[ind]
             p[ind] = (cn[j]**alpha )/ ((dd[ind]+1)** gamma) 
+            totalP += p[ind]
+        for ind in range(len(trim_ids)):
+			p[ind] = p[ind] / totalP
         # TODO shiva remove 262 265    
         if(sum(p)==0): return  None
-        tmp = random_choice(range(len(p)), p ) #, size=1, replace = False)
+        tmp = np.random.choice(len(p), p=p)
         # TODO add weights /direction/attributes
         if tmp is None: return  None
         return trim_ids[tmp], p[tmp]
@@ -301,8 +283,7 @@ def select_node(G, method = 'uniform'):
 		# todo no need to recalculate p each time
         if method == 'older_less_active': p = [(i+1) for i in range(G.n)] # older less active
         elif method == 'younger_less_active' :  p = [G.n-i for i in range(G.n)] # younger less active
-        else:  p = [1 for i in range(G.n)] # uniform
-        return  random_choice(range(len(p)), p ) #, size=1, replace = False)[0]
+        return np.random.choice(len(p), p=p)
 
 def assign(i, C, G):
     graphsize = G.n
@@ -571,7 +552,6 @@ def main(argv):
     #print((time.time() - start_time))      
 
 if __name__ == "__main__":
-   random.seed(9876)
    main(sys.argv[1:])
     
    
