@@ -19,16 +19,24 @@ class Comms:
          if i not in self.groups[cluster_id]:
             self.groups[cluster_id].append(i) 
          self.memberships[i] = cluster_id
-     def write_groups(self, path):
+     def write_groups(self, path, Gnx):
          with open(path, 'w') as f:
              for g in self.groups:
+                 empty = True
                  for i in g:
+                    if i not in Gnx:
+						 continue
+                    empty = False
                     f.write(str(i) + ' ')
-                 f.write('\n')
-     def write_community(self, path):
+                 if not empty:                 
+					 f.write('\n')
+					 
+     def write_community(self, path, Gnx):
          with open(path, 'w') as f:
              for ind in range(len(self.memberships.keys())):
 				 i = self.memberships.keys()[ind]
+				 if i not in Gnx:
+					 continue
 				 f.write(str(i))           
 				 cluster_id = self.memberships[i]
 				 f.write(' ' + str(cluster_id))
@@ -263,7 +271,7 @@ def print_setting(n,m,k,alpha,beta,gamma, phi,o,q,epsilon,weighted,directed):
     if epsilon!=default_FARZ_setting['epsilon']:'epsilon:', epsilon, 
     print 'weighted' if weighted else '', 'directed' if directed else ''
     
-def realize(n, m,  k, b=0.0,  alpha=0.4, beta=0.5, gamma=0.1, phi=1, o=1, q = 0.5, epsilon = 0.0000001, weighted =False, directed=False):
+def realize(n, m,  k, b=0.0,  alpha=0.4, beta=0.5, gamma=0.1, phi=1, o=1, q = 0.5, epsilon = 0.0000001, weighted =False, directed=False, connected=False):
     start_time = time.time()
     #print_setting(n,m,k,alpha,beta,gamma, phi,o,q,epsilon,weighted,directed)
     G =  Graph()
@@ -311,22 +319,23 @@ def props():
     pltn.plot_dists(graphs,names)
 
 def write_to_file(G,C,path, name,format,params):
-    if not os.path.exists(path+'/'): os.makedirs(path+'/')
-    #print 'n=',G.n,' e=', len(G.edge_list), 'generated, writing to ', path+'/'+name, ' in', format
-    if format == 'gml':
-        G = G.to_nx(C)
-        if not params['directed']: G = G.to_undirected()
-        nx.write_gml(G, path+'/'+name+'.gml')
-    elif format == 'list1': 
-        G.write_edgelist(path+'/'+name+'.dat', '\t')
-        C.write_groups( path+'/'+name+'.lgt')
-    elif format == 'list2': 
-        G.write_edgelist(path+'/'+name+'.edgeList', ' ')
-        C.write_community( path+'/'+name+'.community')
+	if not os.path.exists(path+'/'): os.makedirs(path+'/')
+	Gnx = G.to_nx(C)
+	if params['connected']:
+		Gnx = max(nx.connected_component_subgraphs(Gnx), key=len)
+	if format == 'gml':
+		if not params['directed']: Gnx = Gnx.to_undirected()
+		nx.write_gml(Gnx, path+'/'+name+'.gml')
+	elif format == 'list1':
+		nx.write_edgelist(Gnx, path+'/'+name+'.dat', data=False, delimiter=' ') 
+		C.write_groups( path+'/'+name+'.lgt', Gnx)
+	elif format == 'list2': 
+		nx.write_edgelist(Gnx, path+'/'+name+'.edgeList', data=False, delimiter=' ')
+		C.write_community( path+'/'+name+'.community', Gnx)
  
 
 default_ranges = {'beta':(0.5,1,0.05), 'k':(2,50,5), 'm':(2,11,1) , 'phi':(1,100,10), 'o':(1,10,1), 'q':(0.0,1,0.1)}
-default_FARZ_setting = {"n":1000, "k":4, "m":5, "alpha":0.5,"gamma":0.5, "beta":.8, "phi":1, "o":1, 'q':0.5,  "b":0.0, "epsilon":0.0000001, 'directed':False, 'weighted':False}
+default_FARZ_setting = {"n":1000, "k":4, "m":5, "alpha":0.5,"gamma":0.5, "beta":.8, "phi":1, "o":1, 'q':0.5,  "b":0.0, "epsilon":0.0000001, 'directed':False, 'weighted':False, 'connected':False}
 default_batch_setting= {'vari':None, 'arange':None, 'repeat':1, 'path':'.', 'net_name':'network', 'format':'gml', 'farz_params':None}
 supported_formats = ['gml','list1','list2']
 def generate( vari =None, arange =None, repeat = 1, path ='.', net_name = 'network',format ='gml', farz_params= default_FARZ_setting.copy()):
@@ -342,13 +351,6 @@ def generate( vari =None, arange =None, repeat = 1, path ='.', net_name = 'netwo
             G, C =realize(**farz_params)
             name = net_name+( str(r+1) if repeat>1 else '') 
             write_to_file(G,C,path,name,format,farz_params)
-            '''
-            for id in common_neighbours.keys():
-				print(id)
-				#print(common_neighbours[id])
-				#print("vs")
-				print(common_neighbour(id, G,False))
-			'''	
         return
     if arange ==None:
         arange = default_ranges[vari]
@@ -365,130 +367,132 @@ def generate( vari =None, arange =None, repeat = 1, path ='.', net_name = 'netwo
 
 
 def main(argv):
-    FARZsetting = default_FARZ_setting.copy()
-    batch_setting= default_batch_setting.copy()
-    try:    
-        opts, args = getopt.getopt(argv,"ho:s:v:c:f:n:k:m:a:b:g:p:r:q:t:e:dw",\
-                                   ["output=","path=","repeat=","vary=",'range=','format=',"alpha=","beta=","gamma=",'phi=','overlap=','oProb=','epsilon=','cneigh=','directed','weighted'])
-    except getopt.GetoptError:
-        print 'invalid command, try -h to see usage and options'
-        sys.exit(2)
-    for opt, arg in opts:
-        if opt == '-h':
-            print '*** examples:'
-            print '+ example 1: generate a network with 1000 nodes and about 5x1000 edges (m=5), with 4 communities, where 90% of edges fall within communities (beta=0.9)'
-            print '> python FARZ.py -n 1000 -m 5 -k 4 --beta 0.9\n'
-            print '+ example 2: generate a network with properties of example 1, where alpha = 0.2 and gamma = -0.8'
-            print '> python FARZ.py -n 1000 -m 5 -k 4 --beta 0.9 --alpha 0.2 --gamma -0.8 \n'
-            print '+ example 3: generate 10 sample networks with properties of example 1 and save them into ./data'
-            print '> python FARZ.py --path ./data -s 10 -n 1000 -m 5 -k 4 --beta 0.9\n'
-            print '+ example 4: repeat example 2, for beta that varies from 0.5 to 1 with 0.05 increments'
-            print '> python FARZ.py --path ./data -s 10 -v beta -c [0.5,1,0.05] -n 1000 -m 5 -k 4 \n'
-            #print '+ example 5: generate overlapping communities, where each node belongs to at most 3 communities and the portion of overlapping nodes varies'
-            #print 'python FARZ.py -r 3 -v q --path ./datavrq -s 5 --format list\n'
-            
-            print '*** parameters:'
-            print '-n: number of nodes, default (1000)'
-            print '-m: half the average degree of nodes, default (5)'
-            print '-k: number of communities, default (4)'
-            print '-b [or --beta]: the strength of community structure, i.e. the probability of edges to be formed within communities, default (0.8)'
-            print '-a [or --alpha]: the strength of common neighbor\'s effect on edge formation edges, default (0.5)'
-            print '-g [or --gamma]: the strength of degree similarity effect on edge formation, default (0.5), can be negative for networks with negative degree correlation'
-            print '-p [or --phi]: the constant added to all community sizes, higher number makes the communities more balanced in size, default (1), which results in power law distribution for community sizes'
-            #print '-r: the number of communities each node can belong to, default (1)' 
-            #print '-q: the probability of a node belonging to the multiple communities, default (0.5)' 
-            print '-e [or --epsilon]: the probability of noisy/random edges, default (0.0000001)'
-            print '-t: the probability of also connecting to the neighbors of a node each nodes connects to. The default value is (0), but could be increased to a small number to achieve higher clustering coefficient. \n'
+	FARZsetting = default_FARZ_setting.copy()
+	batch_setting= default_batch_setting.copy()
+	try:    
+		opts, args = getopt.getopt(argv,"ho:s:v:c:f:n:k:m:a:b:g:p:r:q:t:e:dw",\
+								   ["output=","path=","repeat=","vary=",'range=','format=',"alpha=","beta=","gamma=",'phi=','overlap=','oProb=','epsilon=','cneigh=','directed','weighted', 'lcc'])
+	except getopt.GetoptError:
+		print 'invalid command, try -h to see usage and options'
+		sys.exit(2)
+	for opt, arg in opts:
+		if opt == '-h':
+			print '*** examples:'
+			print '+ example 1: generate a network with 1000 nodes and about 5x1000 edges (m=5), with 4 communities, where 90% of edges fall within communities (beta=0.9)'
+			print '> python FARZ.py -n 1000 -m 5 -k 4 --beta 0.9\n'
+			print '+ example 2: generate a network with properties of example 1, where alpha = 0.2 and gamma = -0.8'
+			print '> python FARZ.py -n 1000 -m 5 -k 4 --beta 0.9 --alpha 0.2 --gamma -0.8 \n'
+			print '+ example 3: generate 10 sample networks with properties of example 1 and save them into ./data'
+			print '> python FARZ.py --path ./data -s 10 -n 1000 -m 5 -k 4 --beta 0.9\n'
+			print '+ example 4: repeat example 2, for beta that varies from 0.5 to 1 with 0.05 increments'
+			print '> python FARZ.py --path ./data -s 10 -v beta -c [0.5,1,0.05] -n 1000 -m 5 -k 4 \n'
+			#print '+ example 5: generate overlapping communities, where each node belongs to at most 3 communities and the portion of overlapping nodes varies'
+			#print 'python FARZ.py -r 3 -v q --path ./datavrq -s 5 --format list\n'
+			
+			print '*** parameters:'
+			print '-n: number of nodes, default (1000)'
+			print '-m: half the average degree of nodes, default (5)'
+			print '-k: number of communities, default (4)'
+			print '-b [or --beta]: the strength of community structure, i.e. the probability of edges to be formed within communities, default (0.8)'
+			print '-a [or --alpha]: the strength of common neighbor\'s effect on edge formation edges, default (0.5)'
+			print '-g [or --gamma]: the strength of degree similarity effect on edge formation, default (0.5), can be negative for networks with negative degree correlation'
+			print '-p [or --phi]: the constant added to all community sizes, higher number makes the communities more balanced in size, default (1), which results in power law distribution for community sizes'
+			#print '-r: the number of communities each node can belong to, default (1)' 
+			#print '-q: the probability of a node belonging to the multiple communities, default (0.5)' 
+			print '-e [or --epsilon]: the probability of noisy/random edges, default (0.0000001)'
+			print '-t: the probability of also connecting to the neighbors of a node each nodes connects to. The default value is (0), but could be increased to a small number to achieve higher clustering coefficient. \n'
 
-            print '*** batch parameters:'
-            print '-s: the number of networks to be sampled with the given properties, default (1)' 
-            print '-o: the name of the output network, default (network)'
-            print '--path : the path to write the network(s) to, default (.)'
-            print '-f [or --format]: the format of output, list or gml, default (gml)'
-            print '-v: the parameter to vary and sample networks for, default (None)'
-            print '-c: the range to change the given parameter, should be in format of [s,e,inc]'
-            #print 'default FARZ parameters are :\n', default_FARZ_setting
-            #print 'default batch generator parameters are :\n', default_batch_setting
-            
-            sys.exit()
-            
-        elif opt in ("-o", "--output"):
-            batch_setting['net_name'] = arg
-        elif opt in ("--path"):
-            batch_setting['path'] = arg
-        elif opt in ("-f", "--format"):
-            if arg in supported_formats:
-                batch_setting['format'] = arg
-            else:
-                print 'Format not supported , choose from ',supported_formats,' or try -h to see the usage and options'
-                sys.exit(2)                
-        elif opt in ("-s","--repeat"):
-            try: batch_setting['repeat'] = int(arg) 
-            except ValueError:
-                print 'Invalid Number , try -h to see the usage and options'
-                sys.exit(2)            
-        elif opt in ("-v", "--vary"):
-            if (arg in default_ranges.keys()):
-                batch_setting['vari'] = arg
-            else:
-                print 'Invalid variable, choose form :', default_ranges.keys(), ', try -h to see the usage and options'
-                sys.exit(2)
-        elif opt in ("-c", "--range"):
-            try:
-                arange = [float(s) for s in arg[1:-1].split(',')]
-                batch_setting['arange'] = arange
-            except Error:
-                print 'Invalid range, should have the following form : [start,end,incrementBy], try -h to see the usage and options '
-                sys.exit(2)               
-        elif opt in ("-n"):
-            try: FARZsetting['n'] = int(arg) 
-            except ValueError:
-                print 'Invalid Number , try -h to see the usage and options'
-                sys.exit(2)
-        elif opt in ("-k"):
-            try: FARZsetting['k'] = int(arg)
-            except ValueError:
-                print 'Invalid Number , try -h to see the usage and options'
-                sys.exit(2)
-        elif opt in ("-m"):
-            try: FARZsetting['m'] = int(arg)
-            except ValueError:
-                print 'Invalid Number , try -h to see the usage and options'
-                sys.exit(2)
-        elif opt in ("-a","--alpha"):
-            try: FARZsetting['alpha'] = float(arg)  
-            except ValueError:
-                print 'Invalid Number , try -h to see the usage and options'
-                sys.exit(2)         
-        elif opt in ("-b","--beta"):
-            try: FARZsetting['beta'] = float(arg)
-            except ValueError:
-                print 'Invalid Number , try -h to see the usage and options'
-                sys.exit(2)                        
-        elif opt in ("-g","--gamma"):
-            try: FARZsetting['gamma'] = float(arg)
-            except ValueError:
-                print 'Invalid Number , try -h to see the usage and options'
-                sys.exit(2)  
-        elif opt in ("-p","--phi"):
-            try: FARZsetting['phi'] = int(arg)
-            except ValueError:
-                print 'Invalid Number , try -h to see the usage and options'
-                sys.exit(2)                 
-        elif opt in ("-d","--directed"):
-            FARZsetting['directed'] = True
-        elif opt in ("-w","--wighted"):
-            FARZsetting['weighted'] = True                           
-        elif opt in ("-t","--cneigh"):
-            try: FARZsetting['b'] = float(arg)
-            except ValueError:
-                print 'Invalid Number , try -h to see the usage and options'
-                sys.exit(2)         
-        elif opt in ("-e","--epsilon"):
-            try: FARZsetting['epsilon'] = float(arg)         
-            except ValueError:
-                print 'Invalid Number , try -h to see the usage and options'
-                sys.exit(2)
+			print '*** batch parameters:'
+			print '-s: the number of networks to be sampled with the given properties, default (1)' 
+			print '-o: the name of the output network, default (network)'
+			print '--path : the path to write the network(s) to, default (.)'
+			print '-f [or --format]: the format of output, list or gml, default (gml)'
+			print '-v: the parameter to vary and sample networks for, default (None)'
+			print '-c: the range to change the given parameter, should be in format of [s,e,inc]'
+			#print 'default FARZ parameters are :\n', default_FARZ_setting
+			#print 'default batch generator parameters are :\n', default_batch_setting
+			
+			sys.exit()
+			
+		elif opt in ("-o", "--output"):
+			batch_setting['net_name'] = arg
+		elif opt in ("--path"):
+			batch_setting['path'] = arg
+		elif opt in ("-f", "--format"):
+			if arg in supported_formats:
+				batch_setting['format'] = arg
+			else:
+				print 'Format not supported , choose from ',supported_formats,' or try -h to see the usage and options'
+				sys.exit(2)                
+		elif opt in ("-s","--repeat"):
+			try: batch_setting['repeat'] = int(arg) 
+			except ValueError:
+				print 'Invalid Number , try -h to see the usage and options'
+				sys.exit(2)            
+		elif opt in ("-v", "--vary"):
+			if (arg in default_ranges.keys()):
+				batch_setting['vari'] = arg
+			else:
+				print 'Invalid variable, choose form :', default_ranges.keys(), ', try -h to see the usage and options'
+				sys.exit(2)
+		elif opt in ("-c", "--range"):
+			try:
+				arange = [float(s) for s in arg[1:-1].split(',')]
+				batch_setting['arange'] = arange
+			except Error:
+				print 'Invalid range, should have the following form : [start,end,incrementBy], try -h to see the usage and options '
+				sys.exit(2)               
+		elif opt in ("-n"):
+			try: FARZsetting['n'] = int(arg) 
+			except ValueError:
+				print 'Invalid Number , try -h to see the usage and options'
+				sys.exit(2)
+		elif opt in ("-k"):
+			try: FARZsetting['k'] = int(arg)
+			except ValueError:
+				print 'Invalid Number , try -h to see the usage and options'
+				sys.exit(2)
+		elif opt in ("-m"):
+			try: FARZsetting['m'] = int(arg)
+			except ValueError:
+				print 'Invalid Number , try -h to see the usage and options'
+				sys.exit(2)
+		elif opt in ("-a","--alpha"):
+			try: FARZsetting['alpha'] = float(arg)  
+			except ValueError:
+				print 'Invalid Number , try -h to see the usage and options'
+				sys.exit(2)         
+		elif opt in ("-b","--beta"):
+			try: FARZsetting['beta'] = float(arg)
+			except ValueError:
+				print 'Invalid Number , try -h to see the usage and options'
+				sys.exit(2)                        
+		elif opt in ("-g","--gamma"):
+			try: FARZsetting['gamma'] = float(arg)
+			except ValueError:
+				print 'Invalid Number , try -h to see the usage and options'
+				sys.exit(2)  
+		elif opt in ("-p","--phi"):
+			try: FARZsetting['phi'] = int(arg)
+			except ValueError:
+				print 'Invalid Number , try -h to see the usage and options'
+				sys.exit(2)                 
+		elif opt in ("-d","--directed"):
+			FARZsetting['directed'] = True
+		elif opt in ("-w","--wighted"):
+			FARZsetting['weighted'] = True                           
+		elif opt in ("-t","--cneigh"):
+			try: FARZsetting['b'] = float(arg)
+			except ValueError:
+				print 'Invalid Number , try -h to see the usage and options'
+				sys.exit(2)         
+		elif opt in ("-e","--epsilon"):
+			try: FARZsetting['epsilon'] = float(arg)         
+			except ValueError:
+				print 'Invalid Number , try -h to see the usage and options'
+				sys.exit(2)
+		elif opt == '--lcc':
+			FARZsetting['connected'] = True	        
 		'''
 		elif opt in ("-r","--overlap"):
 			try: FARZsetting['o'] = int(arg)
@@ -501,12 +505,12 @@ def main(argv):
 				print 'Invalid Number , try -h to see the usage and options'
 				sys.exit(2)
 		'''        
-                
-    batch_setting['farz_params'] = FARZsetting
-    #print 'generating FARZ benchmark(s) ... '
-    #start_time = time.time()
-    generate( **batch_setting)
-    #print((time.time() - start_time))      
+				
+	batch_setting['farz_params'] = FARZsetting
+	#print 'generating FARZ benchmark(s) ... '
+	#start_time = time.time()
+	generate( **batch_setting)
+	#print((time.time() - start_time))      
 
 if __name__ == "__main__":
    main(sys.argv[1:])
