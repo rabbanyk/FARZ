@@ -82,26 +82,23 @@ def __main():
     args = parser.parse_args()
     
     for File in os.listdir(args.nets):
+        data={}
         if File.endswith(".community"):
                 continue
         with open("properties/"+File, 'w') as output:
             G, communities = loadNet(args.nets+"/"+File)
             connections, comsize = get_connections(G,communities)   
             intra_dens = intra_cluster_dens(connections, comsize)
-            output.write("nodes "+str(len(G.nodes()))+"\n")
-            output.write("edges "+str(len(G.edges()))+"\n")
-            output.write("communities "+str(len(set(communities.values())))+"\n")
-            degrees = get_degree_dist(G)
-            output.write("degrees ")
-            output.write(json.dumps(degrees))
-            output.write("\n")
-            output.write("avg_clustering_coef "+str(nx.average_clustering(G))+"\n")
-            output.write("degree_assortativity "+str(nx.degree_assortativity_coefficient(G))+"\n")
-            output.write("average_shortest_path "+str(nx.average_shortest_path_length(G))+"\n")
-            output.write("diameter "+str(nx.diameter(G))+"\n")
-            output.write("intra_cluster_density ")
-            output.write(json.dumps(intra_dens))
-            output.write("\n")
+            data['nodes'] = str(len(G.nodes()))
+            data['edges'] = str(len(G.edges()))
+            data['communities'] = str(len(set(communities.values())))
+            data['degrees'] = get_degree_dist(G)
+            data['avg_clustering_coef'] = str(round(nx.average_clustering(G),2))
+            data['degree_assortativity'] = str(round(nx.degree_assortativity_coefficient(G),2))
+            data['average_shortest_path'] = str(round(nx.average_shortest_path_length(G),2))
+            data['diameter'] = str(nx.diameter(G))
+            data['intra_cluster_density'] = intra_dens
+            json.dump(data, output)
 
 if __name__ == "__main__":
     __main()
