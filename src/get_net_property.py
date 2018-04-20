@@ -2,7 +2,30 @@ import os
 import argparse
 import networkx as nx
 import json
+import powerlaw
+import matplotlib.pyplot as plt
 
+def get_avg_mixing_parameter(G,communities):
+    mixing_parameter = 0.0
+    # mixing parameter = ratio of external degree to total degree
+    for node in G.nodes():
+        external_degree = 0.0
+        nodecom = communities[node]
+        nodedeg = G.degree(node)
+        for neigh in G.neighbors(node):
+            if nodecom!=communities[neigh]:
+                external_degree += 1
+        mixing_parameter += external_degree/nodedeg
+    mixing_parameter = round(mixing_parameter/len(G.nodes()),2)    
+    return mixing_parameter
+    
+def get_power_law_exponent(data,File):
+    results = powerlaw.Fit(data,discrete = True)
+    fig = plt.figure()
+    ax = plt.subplot(111)
+    fig=ax.hist(data)
+    plt.savefig(File+".png")
+    return round(results.power_law.alpha,2)
 
 def intra_cluster_dens(connections, comsize):
     '''
@@ -74,7 +97,8 @@ def loadNet(path):
             c = int(line.split(" ")[1])
             communities[v]=c
 
-    return G,communities
+    return G,communities    
+    
     		
 def __main():
     parser = argparse.ArgumentParser(description = 'compute and store the properties of networks')
@@ -95,10 +119,31 @@ def __main():
             data['degrees'] = get_degree_dist(G)
             data['avg_clustering_coef'] = str(round(nx.average_clustering(G),2))
             data['degree_assortativity'] = str(round(nx.degree_assortativity_coefficient(G),2))
-            data['average_shortest_path'] = str(round(nx.average_shortest_path_length(G),2))
-            data['diameter'] = str(nx.diameter(G))
+            if nx.is_connected(G):
+                data['average_shortest_path'] = str(round(nx.average_shortest_path_length(G),2))
+                data['diameter'] = str(nx.diameter(G))
+            else:    
+                data['average_shortest_path'] = '-'
+                data['diameter'] = '-'
+            
             data['intra_cluster_density'] = intra_dens
+            data['degree_exp'] = str(get_power_law_exponent(list(G.degree().values()),File))
+            data['comsize_exp'] = str(get_power_law_exponent(list(comsize.values()),File))
+            data['avg_degree'] = str(round(2.0*len(G.edges())/len(G.nodes()),2))
+            data['max_degree'] = str(max(G.degree().values()))
+            data['min_comsize'] = str(min(comsize.values()))
+            data['max_comsize'] = str(max(comsize.values()))
+            data['mixing_parameter'] = str(get_avg_mixing_parameter(G,communities))
             json.dump(data, output)
-
+            #print(File)
+            #print("degree exp "+str(get_power_law_exponent(list(G.degree().values()),File)))
+            #print("comsize exp "+str(get_power_law_exponent(list(comsize.values()),File)))
+            #print("avg degree "+ str(round(2.0*len(G.edges())/len(G.nodes()),2)))
+            #print("max degree "+ str(max(G.degree().values())))
+            #print("minc "+str(min(comsize.values())))
+            #print("maxc "+str(max(comsize.values())))
+            #print("avg mixing parameter "+str(get_avg_mixing_parameter(G,communities)))
+            #print("avg clustering coef "+str(round(nx.average_clustering(G),2)))
+            #print("-----------------")
 if __name__ == "__main__":
     __main()
