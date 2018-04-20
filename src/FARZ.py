@@ -7,7 +7,7 @@ import numpy as np
 import networkx as nx
 import sys
 import getopt
-common_neighbours = {}
+
 
 class Comms:
      def __init__(self, k):
@@ -90,7 +90,7 @@ class Graph:
         return 
     
      
-    def to_nx(self):
+    def to__nx(self):
         G=nx.Graph()
         for u,v, w in self.edge_list:
             G.add_edge(u, v)
@@ -178,8 +178,7 @@ def choose_node(i,c, G, C, alpha, beta, gamma, epsilon):
     norma = False        
     cn={}
     if i in common_neighbours:
-		cn= common_neighbours[i]
-		
+		cn= common_neighbours[i]   
     trim_ids = [id for id in cn.keys() if c == C.memberships[id] and id not in G.neigh[i] and id!=i]
     #trim_ids = sorted(trim_ids) #for testing
     #st = time.time()
@@ -197,11 +196,11 @@ def choose_node(i,c, G, C, alpha, beta, gamma, epsilon):
         p = [0 for j in range(len(trim_ids))]
         for ind in range(len(trim_ids)):
             j = trim_ids[ind]
+            #p[ind] = ((float(cn[j])/(G.deg[i]+G.deg[j]-2*cn[j]+1))**alpha )/ ((dd[ind]+1)** gamma) 
             p[ind] = (cn[j]**alpha )/ ((dd[ind]+1)** gamma) 
             totalP += p[ind]
         for ind in range(len(trim_ids)):
-			p[ind] = p[ind] / totalP
-        # TODO shiva remove 262 265    
+			p[ind] = p[ind] / totalP  
         if(sum(p)==0): return  None
         tmp = np.random.choice(len(p), p=p)
         # TODO add weights /direction/attributes
@@ -276,6 +275,7 @@ def realize(n, m,  k, b=0.0,  alpha=0.4, beta=0.5, gamma=0.1, phi=1, o=1, q = 0.
     #print_setting(n,m,k,alpha,beta,gamma, phi,o,q,epsilon,weighted,directed)
     G =  Graph()
     C = Comms(k)
+    mfrac = m - int(m)
     # add a representative to each community
     for i in range(k):
 		G.add_node()
@@ -288,6 +288,9 @@ def realize(n, m,  k, b=0.0,  alpha=0.4, beta=0.5, gamma=0.1, phi=1, o=1, q = 0.
         
 		for e in range(1,m):
 			j = select_node(G)
+			connect(j, b, G, C, alpha, beta, gamma, epsilon)
+        if (random.random()<mfrac):
+            j = select_node(G)
 			connect(j, b, G, C, alpha, beta, gamma, epsilon)
     #print("--- realize %s seconds ---" % (time.time() - start_time))                
     
@@ -318,9 +321,13 @@ def props():
     
     pltn.plot_dists(graphs,names)
 
-def write_to_file(G,C,path, name,format,params):
+def write_to_file(G,C,path, name,format,params, is_nx=False):
 	if not os.path.exists(path+'/'): os.makedirs(path+'/')
-	Gnx = G.to_nx(C)
+	if is_nx:
+		Gnx = G 
+		
+	else:
+		Gnx = G.to_nx(C)   
 	if params['connected']:
 		Gnx = max(nx.connected_component_subgraphs(Gnx), key=len)
 	if format == 'gml':
@@ -330,7 +337,7 @@ def write_to_file(G,C,path, name,format,params):
 		nx.write_edgelist(Gnx, path+'/'+name+'.dat', data=False, delimiter=' ') 
 		C.write_groups( path+'/'+name+'.lgt', Gnx)
 	elif format == 'list2': 
-		nx.write_edgelist(Gnx, path+'/'+name+'.edgeList', data=False, delimiter=' ')
+		nx.write_edgelist(Gnx, path+'/'+name, data=False, delimiter=' ')
 		C.write_community( path+'/'+name+'.community', Gnx)
  
 
@@ -351,7 +358,8 @@ def generate( vari =None, arange =None, repeat = 1, path ='.', net_name = 'netwo
             G, C =realize(**farz_params)
             name = net_name+( str(r+1) if repeat>1 else '') 
             write_to_file(G,C,path,name,format,farz_params)
-        return
+        # remove this later
+        return G.to__nx(),C
     if arange ==None:
         arange = default_ranges[vari]
     for i,var in enumerate(get_range(arange[0],arange[1],arange[2])): 
@@ -361,14 +369,17 @@ def generate( vari =None, arange =None, repeat = 1, path ='.', net_name = 'netwo
             G, C =realize(**farz_params)
             name = 'S'+str(i+1)+'-'+net_name+ (str(r+1) if repeat>1 else '') 
             write_to_file(G,C,path,name,format,farz_params)
-            
+    
+           
        
 
 
 
-def main(argv):
+def FARZ(argv):
 	FARZsetting = default_FARZ_setting.copy()
 	batch_setting= default_batch_setting.copy()
+	global common_neighbours
+	common_neighbours = {}
 	try:    
 		opts, args = getopt.getopt(argv,"ho:s:v:c:f:n:k:m:a:b:g:p:r:q:t:e:dw",\
 								   ["output=","path=","repeat=","vary=",'range=','format=',"alpha=","beta=","gamma=",'phi=','overlap=','oProb=','epsilon=','cneigh=','directed','weighted', 'lcc'])
@@ -453,7 +464,7 @@ def main(argv):
 				print 'Invalid Number , try -h to see the usage and options'
 				sys.exit(2)
 		elif opt in ("-m"):
-			try: FARZsetting['m'] = int(arg)
+			try: FARZsetting['m'] = float(arg)
 			except ValueError:
 				print 'Invalid Number , try -h to see the usage and options'
 				sys.exit(2)
@@ -509,11 +520,11 @@ def main(argv):
 	batch_setting['farz_params'] = FARZsetting
 	#print 'generating FARZ benchmark(s) ... '
 	#start_time = time.time()
-	generate( **batch_setting)
+	G,C = generate( **batch_setting)
 	#print((time.time() - start_time))      
-
+	return G,C,FARZsetting
 if __name__ == "__main__":
-   main(sys.argv[1:])
+   FARZ(sys.argv[1:])
     
    
    
