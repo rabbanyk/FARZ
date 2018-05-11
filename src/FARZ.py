@@ -73,6 +73,7 @@ class Graph:
         return False
     
     def add_edge(self, u, v, w=1):
+        #print("add "+str(u)+" "+str(v))
         if u==v: return
         if not self.weighted : w =1
         self.edge_list.append((u,v,w) if u<v or self.directed else  (v,u,w))
@@ -133,7 +134,7 @@ def Q(G, C):
     q /= 2*m
     return q
 
-def update(i, neighbors, wij, is_weighted):
+def update_common_neighbours(i, neighbors, wij, is_weighted):
     if not is_weighted:
         wij=1
     if(i not in common_neighbours ):
@@ -150,6 +151,78 @@ def update(i, neighbors, wij, is_weighted):
         if i!=k:
             if i in pk: pk[i] += weight 
             else: pk[i] = weight
+
+def get_common_neighbors(G,i,j):
+    return [x for x in G.neigh[i] if x in G.neigh[j] and x not in (i,j)]
+
+def update_triangles(G,i,j):
+    if i not in common_neighbours:
+        return
+    if j not in common_neighbours[i]:
+        return 
+    cn_ij = get_common_neighbors(G,i,j)
+    # update triangles of i 
+    if i not in Triangles:
+        Triangles[i] = common_neighbours[i][j]
+    else:
+        Triangles[i] += common_neighbours[i][j]  
+
+    # update triangles of j
+    if j not in Triangles:
+        Triangles[j] = common_neighbours[i][j]
+    else:
+        Triangles[j] += common_neighbours[i][j]     
+
+    # update triangles of common_neighbors of i and j  
+    for neigh in cn_ij:
+        if neigh not in Triangles:
+            Triangles[neigh] = 1
+        else:
+            Triangles[neigh] += 1
+def update_inv_deg(G,i,j):
+    update_inv_deg_cm(G,i,j)
+    update_inv_deg_cm(G,j,i)
+    update_inv_deg_inc(G,i,j)
+    update_inv_deg_inc(G,j,i)
+    #print(inv_deg)
+    #print("---------------------------")
+    
+def update_inv_deg_cm(G,i,j):
+    #print("j is "+str(j))
+    d_j = G.deg[j]
+    #print(d_j)
+    neighbors = G.neigh[j]
+    if(i not in inv_deg ):
+        inv_deg[i] = {}
+    pi = inv_deg[i]
+        
+    for k,wjk in neighbors.items(): # a new common neighbor (j) is added between i and k
+        if i == k: continue
+        if(k not in inv_deg ):
+            inv_deg[k] = {}
+        pk = inv_deg[k]
+        deg = 2.0/float(d_j*(d_j-1))
+        if k in pi: pi[k] += deg
+        else: pi[k] = deg
+        if i!=k:
+            if i in pk: pk[i] += deg 
+            else: pk[i] = deg
+    
+def update_inv_deg_inc(G,i,j):
+    neighbors = list(G.neigh[i])
+    for l in range(len(neighbors)-1):
+        n1 = neighbors[l]
+        if n1 == j: continue
+        for k in range(l+1,len(neighbors)):
+            n2 = neighbors[k]
+            if n2 == j: continue
+            d_i = G.deg[i]
+            old_deg = 2.0/float((d_i-1)*(d_i-2))
+            new_deg = 2.0/float(d_i*(d_i-1))
+            delta_deg = new_deg-old_deg
+            inv_deg[n1][n2] += delta_deg
+            inv_deg[n2][n1] += delta_deg
+
 
 def choose_community(i, G, C, alpha, beta, gamma, epsilon):
     mids = C.memberships[i]
@@ -172,6 +245,11 @@ def degree_similarity(i, ids, G, gamma, normalize = True):
 
 def combine (a,b,alpha,gamma):
     return (a**alpha) / ((b+1)**gamma)
+def get_inv_deg(G,nodes):
+    total_deg = 0.0
+    for node in nodes:
+        total_deg += 2.0/(G.deg[node]*(G.deg[node]-1))
+    return total_deg
 
 def choose_node(i,c, G, C, alpha, beta, gamma, epsilon):
         
@@ -197,11 +275,37 @@ def choose_node(i,c, G, C, alpha, beta, gamma, epsilon):
         for ind in range(len(trim_ids)):
             j = trim_ids[ind]
             #p[ind] = ((float(cn[j])/(G.deg[i]+G.deg[j]-2*cn[j]+1))**alpha )/ ((dd[ind]+1)** gamma) 
-            p[ind] = ((float(cn[j])/(G.deg[i]-cn[j]+1))**alpha )/ ((dd[ind]+1)** gamma) 
+            #p[ind] = ((float(cn[j])/(G.deg[i]))**alpha )/ ((dd[ind]+1)** gamma) 
+            #invrs_deg_i = 1.0/pow(G.deg[i],2)
+            #invrs_deg_j = 1.0/pow(G.deg[j],2)
+            #p[ind] = ((float(cn[j])*(invrs_deg_i+invrs_deg_j))**alpha )/ ((dd[ind]+1)** gamma) 
+            #p[ind] = ((float(cn[j]))**alpha )/ ((dd[ind]+1)** gamma) 
+            #p[ind] = ((float(cn[j]))**alpha ) 
+            #cn_deg = get_inv_deg(G,cn)
+            #p[ind] = (cn_deg**alpha )/ ((dd[ind]+1)** gamma) 
+            #---------------------------
+            d_i = G.deg[i]
+            d_j = G.deg[j]
+            if i in Triangles: Tri_i = Triangles[i]
+            else: Tri_i = 0 
+            if j in Triangles: Tri_j = Triangles[j]
+            else: Tri_j = 0    
+            T1 = float(2 * (cn[j] * (d_i-1) - 2 * Tri_i))
+            T2 = float(2 * (cn[j] * (d_j-1) - 2 * Tri_j))
+            if d_i != 0 and d_i != 1:
+                T1 /= (d_i*(d_i-1)*(d_i+1))
+            if d_j != 0 and d_j != 1:
+                T2 /= (d_j*(d_j-1)*(d_j+1))    
+
+            T3 = inv_deg[i][j]
+            delta_ccoef = T1+T2+T3
+            p[ind] = (delta_ccoef+1)**alpha 
+            #---------------
             totalP += p[ind]
+        if(totalP==0): return  None
         for ind in range(len(trim_ids)):
             p[ind] = p[ind] / totalP  
-        if(sum(p)==0): return  None
+        
         tmp = np.random.choice(len(p), p=p)
         # TODO add weights /direction/attributes
         if tmp is None: return  None
@@ -215,9 +319,11 @@ def connect_neighbor(i, j, pj, c, b,  G, C, beta):
         if (random.random() <b and k!=i and (k in ids or random.random()>beta)):
             G.add_edge(i,k,wjk*pj)
             #by adding an edge between i and j, the common neighbors of j and i's neighbor changes    
-            update(i,G.neigh[j],wjk*pj,G.weighted)
+            update_common_neighbours(i,G.neigh[j],wjk*pj,G.weighted)
             #by adding an edge between i and j, the common neighbors of i and j's neighbor changes    
-            update(j,G.neigh[i],wjk*pj,G.weighted)
+            update_common_neighbours(j,G.neigh[i],wjk*pj,G.weighted)
+            update_triangles(G,i,j)
+            update_inv_deg(G,i,j)
                     
 def connect(i, b,  G, C, alpha, beta, gamma, epsilon):
     #Choose community
@@ -233,9 +339,10 @@ def connect(i, b,  G, C, alpha, beta, gamma, epsilon):
     j, pj = tmp 
     st=time.time()
     G.add_edge(i,j,pj)
-    #update_common_neighbour(i,j,pj,G)
-    update(i,G.neigh[j],pj,G.weighted)
-    update(j,G.neigh[i],pj,G.weighted)
+    update_common_neighbours(i,G.neigh[j],pj,G.weighted)
+    update_common_neighbours(j,G.neigh[i],pj,G.weighted)
+    update_triangles(G,i,j)
+    update_inv_deg(G,i,j)
     #print("--- add_edge %s seconds ---" % (time.time() - st))      
     st=time.time()
     connect_neighbor(i, j, pj , c, b,  G, C, beta)
@@ -260,6 +367,10 @@ def assign(i, C, G):
     cid = C.memberships[node]
     C.add(cid, i)
     G.add_edge(i,node)
+    update_common_neighbours(i,G.neigh[node],1,G.weighted)
+    update_common_neighbours(node,G.neigh[i],1,G.weighted)
+    update_triangles(G,i,node)
+    update_inv_deg(G,i,node)
     return
  
 def print_setting(n,m,k,alpha,beta,gamma, phi,o,q,epsilon,weighted,directed):
@@ -358,6 +469,14 @@ def generate( vari =None, arange =None, repeat = 1, path ='.', net_name = 'netwo
             G, C =realize(**farz_params)
             name = net_name+( str(r+1) if repeat>1 else '') 
             write_to_file(G,C,path,name,format,farz_params)
+        #print(inv_deg)    
+        # for k in inv_deg:
+        #     for v in inv_deg[k]:
+        #         cn = get_common_neighbors(G,k,v)
+        #         delta = get_inv_deg(G,cn)-inv_deg[k][v]
+        #         if(delta>0.0000000001):
+        #             print(delta)
+                #print(str(get_inv_deg(G,cn))-inv_deg[k][v]))
         # remove this later
         return G.to__nx(),C
     if arange ==None:
@@ -369,6 +488,7 @@ def generate( vari =None, arange =None, repeat = 1, path ='.', net_name = 'netwo
             G, C =realize(**farz_params)
             name = 'S'+str(i+1)+'-'+net_name+ (str(r+1) if repeat>1 else '') 
             write_to_file(G,C,path,name,format,farz_params)
+           
     
            
        
@@ -379,7 +499,11 @@ def FARZ(argv):
     FARZsetting = default_FARZ_setting.copy()
     batch_setting= default_batch_setting.copy()
     global common_neighbours
+    global Triangles
+    global inv_deg
     common_neighbours = {}
+    Triangles = {}
+    inv_deg = {}
     try:    
         opts, args = getopt.getopt(argv,"ho:s:v:c:f:n:k:m:a:b:g:p:r:q:t:e:dw",\
                                    ["output=","path=","repeat=","vary=",'range=','format=',"alpha=","beta=","gamma=",'phi=','overlap=','oProb=','epsilon=','cneigh=','directed','weighted', 'lcc'])
