@@ -272,34 +272,40 @@ def choose_node(i,c, G, C, alpha, beta, gamma, epsilon):
     else:
         totalP = 0.0
         p = [0 for j in range(len(trim_ids))]
+        #rand = random.random()
         for ind in range(len(trim_ids)):
             j = trim_ids[ind]
+            # if rand < 0.5:
+            #     p[ind] = (float(cn[j]))**alpha
+            # else:
+            #     p[ind] = 1.0 / ((dd[ind]+1)** gamma) 
+
+            p[ind] = (float(cn[j]))**alpha / ((dd[ind]+1)** gamma) 
             #p[ind] = ((float(cn[j])/(G.deg[i]+G.deg[j]-2*cn[j]+1))**alpha )/ ((dd[ind]+1)** gamma) 
             #p[ind] = ((float(cn[j])/(G.deg[i]))**alpha )/ ((dd[ind]+1)** gamma) 
             #invrs_deg_i = 1.0/pow(G.deg[i],2)
             #invrs_deg_j = 1.0/pow(G.deg[j],2)
             #p[ind] = ((float(cn[j])*(invrs_deg_i+invrs_deg_j))**alpha )/ ((dd[ind]+1)** gamma) 
-            #p[ind] = ((float(cn[j]))**alpha )/ ((dd[ind]+1)** gamma) 
             #p[ind] = ((float(cn[j]))**alpha ) 
             #cn_deg = get_inv_deg(G,cn)
             #p[ind] = (cn_deg**alpha )/ ((dd[ind]+1)** gamma) 
             #---------------------------
-            d_i = G.deg[i]
-            d_j = G.deg[j]
-            if i in Triangles: Tri_i = Triangles[i]
-            else: Tri_i = 0 
-            if j in Triangles: Tri_j = Triangles[j]
-            else: Tri_j = 0    
-            T1 = float(2 * (cn[j] * (d_i-1) - 2 * Tri_i))
-            T2 = float(2 * (cn[j] * (d_j-1) - 2 * Tri_j))
-            if d_i != 0 and d_i != 1:
-                T1 /= (d_i*(d_i-1)*(d_i+1))
-            if d_j != 0 and d_j != 1:
-                T2 /= (d_j*(d_j-1)*(d_j+1))    
+            # d_i = G.deg[i]
+            # d_j = G.deg[j]
+            # if i in Triangles: Tri_i = Triangles[i]
+            # else: Tri_i = 0 
+            # if j in Triangles: Tri_j = Triangles[j]
+            # else: Tri_j = 0    
+            # T1 = float(2 * (cn[j] * (d_i-1) - 2 * Tri_i))
+            # T2 = float(2 * (cn[j] * (d_j-1) - 2 * Tri_j))
+            # if d_i != 0 and d_i != 1:
+            #     T1 /= (d_i*(d_i-1)*(d_i+1))
+            # if d_j != 0 and d_j != 1:
+            #     T2 /= (d_j*(d_j-1)*(d_j+1))    
 
-            T3 = inv_deg[i][j]
-            delta_ccoef = T1+T2+T3
-            p[ind] = (delta_ccoef+1)**alpha 
+            # T3 = inv_deg[i][j]
+            # delta_ccoef = T1+T2+T3
+            # p[ind] = (delta_ccoef+1)**alpha 
             #---------------
             totalP += p[ind]
         if(totalP==0): return  None
@@ -322,8 +328,8 @@ def connect_neighbor(i, j, pj, c, b,  G, C, beta):
             update_common_neighbours(i,G.neigh[j],wjk*pj,G.weighted)
             #by adding an edge between i and j, the common neighbors of i and j's neighbor changes    
             update_common_neighbours(j,G.neigh[i],wjk*pj,G.weighted)
-            update_triangles(G,i,j)
-            update_inv_deg(G,i,j)
+            #update_triangles(G,i,j)
+            #update_inv_deg(G,i,j)
                     
 def connect(i, b,  G, C, alpha, beta, gamma, epsilon):
     #Choose community
@@ -341,8 +347,8 @@ def connect(i, b,  G, C, alpha, beta, gamma, epsilon):
     G.add_edge(i,j,pj)
     update_common_neighbours(i,G.neigh[j],pj,G.weighted)
     update_common_neighbours(j,G.neigh[i],pj,G.weighted)
-    update_triangles(G,i,j)
-    update_inv_deg(G,i,j)
+    #update_triangles(G,i,j)
+    #update_inv_deg(G,i,j)
     #print("--- add_edge %s seconds ---" % (time.time() - st))      
     st=time.time()
     connect_neighbor(i, j, pj , c, b,  G, C, beta)
@@ -369,8 +375,8 @@ def assign(i, C, G):
     G.add_edge(i,node)
     update_common_neighbours(i,G.neigh[node],1,G.weighted)
     update_common_neighbours(node,G.neigh[i],1,G.weighted)
-    update_triangles(G,i,node)
-    update_inv_deg(G,i,node)
+    #update_triangles(G,i,node)
+    #update_inv_deg(G,i,node)
     return
  
 def print_setting(n,m,k,alpha,beta,gamma, phi,o,q,epsilon,weighted,directed):
